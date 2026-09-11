@@ -16,7 +16,7 @@ public final class ProfileHiderProcessor {
             return original;
         }
 
-        String username = Minecraft.getInstance().getUser().getName();
+        String username = com.chattriggers.ctjs.api.client.Player.getName();
         String replacement = V5MixinStorage.getString("profileHiderReplacement", "Hidden");
         MutableComponent result = Component.empty();
 

@@ -192,34 +192,7 @@ object TabList {
         listedPlayerListEntries += fakeEntry
         playerListEntries[uuid] = fakeEntry
 
-        if (!useExistingSkin) {
-            updateNames()
-            return
-        }
-
-        val mc = Client.getMinecraft()
-        // TODO: is it necessary to actually create a new one ?
-        val apiServices = mc.services()
-
-        val findName = CompletableFuture.supplyAsync ({
-            apiServices.nameToIdCache.get(username)
-        }, Util.backgroundExecutor().forName("getProfile"))
-
-        findName.thenAcceptAsync {
-            if (!it.isPresent) return@thenAcceptAsync
-
-            val result = apiServices.sessionService.fetchProfile(it.get().id, true) ?: return@thenAcceptAsync
-            val entry = PlayerInfo(result.profile, true)
-            entry.setTabListDisplayName(name)
-
-            listedPlayerListEntries += entry
-            playerListEntries[result.profile.id] = entry
-
-            listedPlayerListEntries -= fakeEntry
-            playerListEntries.remove(uuid)
-
-            updateNames()
-        }
+        updateNames()
     }
 
     @JvmStatic

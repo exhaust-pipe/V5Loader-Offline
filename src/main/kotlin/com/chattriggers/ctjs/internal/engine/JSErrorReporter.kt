@@ -1,19 +1,13 @@
 package com.chattriggers.ctjs.internal.engine
 
 import com.chattriggers.ctjs.engine.Console
-import com.chattriggers.ctjs.internal.launch.SecureLoader
 import org.mozilla.javascript.ErrorReporter
 import org.mozilla.javascript.EvaluatorException
 
 object JSErrorReporter : ErrorReporter {
     private const val MESSAGE_PREFIX = "js: "
 
-    fun reportConsoleError(message: String) {
-        SecureLoader.reportCtjsJavascriptError(
-            kind = "console.error",
-            message = message,
-        )
-    }
+    fun reportConsoleError(message: String) {}
 
     override fun warning(message: String?, sourceName: String?, line: Int, lineSource: String?, lineOffset: Int) {
         reportErrorMessage(message, sourceName, line, lineSource, lineOffset, isWarning = true)
@@ -41,16 +35,6 @@ object JSErrorReporter : ErrorReporter {
             message = "warning: $message"
 
         Console.println(MESSAGE_PREFIX + message)
-        if (!isWarning) {
-            SecureLoader.reportCtjsJavascriptError(
-                kind = "reporter",
-                message = message,
-                sourceName = sourceName,
-                line = line.takeIf { it > 0 },
-                lineSource = lineSource,
-                lineOffset = lineOffset,
-            )
-        }
         if (lineSource != null) {
             Console.println(MESSAGE_PREFIX + lineSource)
             Console.println(MESSAGE_PREFIX + buildIndicator(lineOffset))

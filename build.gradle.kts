@@ -6,11 +6,6 @@ plugins {
     alias(libs.plugins.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.loom)
-    id("io.github.izhangzhihao.unmeta") version "1.0.3"
-}
-
-unmeta {
-    enable.set(true)
 }
 
 version = property("mod_version").toString()
@@ -46,10 +41,6 @@ dependencies {
 
     compileOnly(libs.sponge.mixin)
     ksp(project(":typing-generator"))
-    // Discord IPC
-    implementation("meteordevelopment:discord-ipc:1.1")
-    include("meteordevelopment:discord-ipc:1.1")
-
     // NanoVG (with natives)
     implementation(libs.lwjgl.nanovg) { include(this) }
     listOf("windows", "linux", "macos", "macos-arm64").forEach {
@@ -60,12 +51,6 @@ dependencies {
 
     // Mixin Extras
     implementation(libs.mixinextras) { include(this) }
-
-    // Proxy support
-    implementation("io.netty:netty-handler-proxy:4.2.7.Final")
-    include("io.netty:netty-handler-proxy:4.2.7.Final")
-    implementation("io.netty:netty-codec-socks:4.2.7.Final")
-    include("io.netty:netty-codec-socks:4.2.7.Final")
 
     compileOnly(libs.hypixel.mod.api)
     implementation(libs.hypixel.modrinth.api) { include(this) }
@@ -91,6 +76,8 @@ java {
 
 tasks {
     processResources {
+        // This Windows build only ships the native library rebuilt from NativeSrc.
+        exclude("assets/v5/natives/linux/**", "assets/v5/natives/macos/**")
         val mcVersion = libs.versions.minecraft.get()
         val flkVersion = libs.versions.fabric.kotlin.get()
         val fapiVersion = libs.versions.fabric.api.get()
@@ -130,8 +117,10 @@ tasks {
     }
 
     jar {
-        archiveFileName.set(if (providers.gradleProperty("releaseBuild").isPresent) "V5-Loader-26.1.2.jar" else "V5-Loader-DEV.jar")
+        archiveFileName.set("V5-Offline-26.1.2.jar")
         exclude("typings.d.ts")
+        from("LICENSE")
+        from("THIRD_PARTY_LICENSES.md")
     }
 
     register<Copy>("generateTypings") {

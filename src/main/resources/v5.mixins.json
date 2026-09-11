@@ -7,7 +7,6 @@
         "BlockMixin",
         "CameraMixin",
         "ChatComponentMixin",
-        "ConnectionProxyMixin",
         "CrossCollisionBlockMixin",
         "DrawContextCapture",
         "EntityRendererMixin",
@@ -20,10 +19,8 @@
         "KeyboardHandlerMixin",
         "MinecraftMixin",
         "MouseHandlerMixin",
-        "JoinMultiplayerScreenMixin",
         "LevelRendererMixin",
-        "VisGraphMixin",
-        "YggdrasilServicesKeyInfoMixin"
+        "VisGraphMixin"
     ],
     "mixins": [
         "ConnectionMixin"

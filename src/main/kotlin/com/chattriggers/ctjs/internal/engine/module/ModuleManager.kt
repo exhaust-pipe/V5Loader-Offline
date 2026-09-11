@@ -49,16 +49,7 @@ object ModuleManager {
             it.metadata.mixinEntry = it.metadata.mixinEntry?.normalizeModulePath()
         }
 
-        // Get all jars
-        val jars = modules.flatMap { module ->
-            module.folder.walk().filter {
-                it.isFile && it.extension == "jar"
-            }.map {
-                it.toURI().toURL()
-            }.toList()
-        }
-
-        JSLoader.setup(jars)
+        JSLoader.setup(emptyList())
     }
 
     @JvmOverloads

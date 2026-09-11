@@ -74,7 +74,17 @@ object JSLoader {
 
         val cx = JSContextFactory.enterContext()
         moduleProvider = StrongCachingModuleScriptProvider(
-            UrlModuleSourceProvider(listOf(modulesFolder.toURI()), listOf())
+            object : UrlModuleSourceProvider(listOf(modulesFolder.toURI()), listOf()) {
+                override fun openUrlConnection(url: URL): java.net.URLConnection {
+                    require(url.protocol == "file" && url.host.isNullOrEmpty()) {
+                        "V5 Offline only loads local scripts"
+                    }
+                    require(File(url.toURI()).canonicalFile.toPath().startsWith(modulesFolder.canonicalFile.toPath())) {
+                        "Script path must stay inside config/ChatTriggers/modules"
+                    }
+                    return super.openUrlConnection(url)
+                }
+            }
         )
 
         moduleScope = ImporterTopLevel(cx)

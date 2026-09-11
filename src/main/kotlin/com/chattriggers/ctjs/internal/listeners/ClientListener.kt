@@ -65,16 +65,19 @@ object ClientListener : Initializer {
         }
 
         ClientTickEvents.START_CLIENT_TICK.register {
+            val ready = mutableListOf<Task>()
             synchronized(tasks) {
                 tasks.removeAll { task ->
                     if (task.delay-- <= 0) {
-                        Client.getMinecraft().submit(task.callback)
+                        ready.add(task)
                         true
                     } else {
                         false
                     }
                 }
             }
+            // Callbacks may schedule more work; drain the queue before invoking them.
+            ready.forEach { Client.getMinecraft().submit(it.callback) }
 
             if (World.isLoaded() && World.toMC()?.tickRateManager()?.runsNormally() == true) {
                 TriggerType.TICK.triggerAll(ticksPassed)

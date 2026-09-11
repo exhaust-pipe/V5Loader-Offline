@@ -126,7 +126,7 @@ object Player {
      * @return the player's username
      */
     @JvmStatic
-    fun getName(): String = Client.getMinecraft().user.name
+    fun getName(): String = toMC()?.name?.string ?: "Player"
 
     /**
      * Gets the Java UUID object of the player.
@@ -135,7 +135,7 @@ object Player {
      * @return the player's uuid
      */
     @JvmStatic
-    fun getUUID(): UUID = Client.getMinecraft().gameProfile.id
+    fun getUUID(): UUID = toMC()?.uuid ?: UUID(0L, 0L)
 
     @JvmStatic
     fun getHP(): Float = toMC()?.health ?: 0f

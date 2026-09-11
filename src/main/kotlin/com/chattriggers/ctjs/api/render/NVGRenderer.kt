@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileInputStream
-import java.net.URI
 
 object NVGRenderer {
 
@@ -57,18 +56,6 @@ object NVGRenderer {
 
     private val gifCache = ConcurrentHashMap<String, CachedGif>()
     private val glTextureCache = ConcurrentHashMap<Int, Int>()
-
-    private val urlCache = ConcurrentHashMap<String, Int>()
-    private val pendingDownloads = ConcurrentHashMap.newKeySet<String>()
-
-    private data class DecodedImage(
-        val url: String,
-        val pixels: ByteBuffer?,
-        val width: Int,
-        val height: Int
-    )
-    private val downloadQueue = java.util.concurrent.LinkedBlockingQueue<DecodedImage>()
-    private const val MAX_DOWNLOADS_PER_FRAME = 5
 
     private val preRenderCallbacks = CopyOnWriteArrayList<Runnable>()
     private val renderCallbacks = CopyOnWriteArrayList<Runnable>()
@@ -149,7 +136,6 @@ object NVGRenderer {
 
     @JvmStatic
     fun runDrawables() {
-        processDownloadQueue()
         runCallbacks(renderCallbacks)
     }
 
@@ -474,7 +460,7 @@ object NVGRenderer {
     private fun readImage(path: String): ByteArray {
         val trimmed = path.trim()
         val stream = when {
-            trimmed.startsWith("http://") || trimmed.startsWith("https://") -> URI.create(trimmed).toURL().openStream()
+            trimmed.contains("://") -> throw IllegalArgumentException("Remote images are disabled")
             File(trimmed).isFile -> FileInputStream(trimmed)
             else -> NVGRenderer::class.java.getResourceAsStream(trimmed)
                 ?: throw FileNotFoundException("Cannot find image: $trimmed")
@@ -662,67 +648,10 @@ object NVGRenderer {
         nvgFill(vg)
     }
 
-    private fun processDownloadQueue() {
-        var processed = 0
-        while (processed < MAX_DOWNLOADS_PER_FRAME) {
-            val decoded = downloadQueue.poll() ?: break
-
-            if (decoded.pixels != null && vg != -1L) {
-                val nvgId = nvgCreateImageRGBA(vg, decoded.width, decoded.height, 0, decoded.pixels)
-                stbi_image_free(decoded.pixels)
-                urlCache[decoded.url] = nvgId
-            } else {
-                urlCache[decoded.url] = 0
-            }
-            pendingDownloads.remove(decoded.url)
-            processed++
-        }
-    }
-
     @JvmStatic
     @JvmOverloads
     fun drawImageFromUrl(url: String, x: Float, y: Float, w: Float, h: Float, radius: Float = 0f, alpha: Float = 1f) {
-        if (!drawing || url == "none") return
-
-        urlCache[url]?.let { cachedId ->
-            if (cachedId > 0) {
-                nvgImagePattern(vg, x, y, w, h, 0f, cachedId, alpha, nvgPaint)
-                nvgBeginPath(vg)
-                if (radius > 0) nvgRoundedRect(vg, x, y, w, h, radius) else nvgRect(vg, x, y, w, h)
-                nvgFillPaint(vg, nvgPaint)
-                nvgFill(vg)
-            }
-            return
-        }
-
-        if (pendingDownloads.add(url)) {
-            Thread({
-                try {
-                    val connection = URI.create(url).toURL().openConnection().apply {
-                        connectTimeout = 5000
-                        readTimeout = 5000
-                        setRequestProperty("User-Agent", "Mozilla/5.0")
-                    }
-                    val bytes = connection.getInputStream().use { it.readBytes() }
-
-                    val buffer = MemoryUtil.memAlloc(bytes.size).put(bytes).flip() as ByteBuffer
-                    val wArr = IntArray(1)
-                    val hArr = IntArray(1)
-                    val cArr = IntArray(1)
-
-                    val pixels = stbi_load_from_memory(buffer, wArr, hArr, cArr, 4)
-                    MemoryUtil.memFree(buffer)
-
-                    if (pixels != null) {
-                        downloadQueue.add(DecodedImage(url, pixels, wArr[0], hArr[0]))
-                    } else {
-                        downloadQueue.add(DecodedImage(url, null, 0, 0))
-                    }
-                } catch (e: Exception) {
-                    downloadQueue.add(DecodedImage(url, null, 0, 0))
-                }
-            }, "V5-ImageDownload-${url.hashCode()}").start()
-        }
+        // Retained for old local UI callers; remote image fetching is removed.
     }
 
     @JvmStatic
@@ -791,10 +720,6 @@ object NVGRenderer {
         glTextureCache.values.filter { it != 0 }.forEach { nvgDeleteImage(vg, it) }
         glTextureCache.clear()
 
-        urlCache.values.filter { it > 0 }.forEach { nvgDeleteImage(vg, it) }
-        urlCache.clear()
-        pendingDownloads.clear()
-
         if (checkTexId != 0) {
             nvgDeleteImage(vg, checkTexId)
             checkTexId = 0
@@ -807,7 +732,7 @@ object NVGRenderer {
 
     @JvmStatic
     fun getCacheStats(): String {
-        return "Images: ${imageCache.size}, GIFs: ${gifCache.size}, GL: ${glTextureCache.size}, URLs: ${urlCache.size}"
+        return "Images: ${imageCache.size}, GIFs: ${gifCache.size}, GL: ${glTextureCache.size}"
     }
 
     @JvmStatic

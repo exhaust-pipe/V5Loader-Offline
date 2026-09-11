@@ -2,9 +2,7 @@ package com.chattriggers.ctjs.engine
 
 import com.chattriggers.ctjs.api.Config
 import com.chattriggers.ctjs.internal.console.ConsoleHostProcess
-import com.chattriggers.ctjs.internal.launch.SecureLoader
 import kotlinx.serialization.Serializable
-import org.mozilla.javascript.RhinoException
 import org.mozilla.javascript.WrappedException
 import java.awt.Color
 
@@ -38,14 +36,6 @@ fun Any.printToConsole(logType: LogType = LogType.INFO) {
 
 fun Throwable.printTraceToConsole() {
     val error = (this as? WrappedException)?.wrappedException ?: this
-    if (this is RhinoException) {
-        SecureLoader.reportCtjsJavascriptError(
-            kind = "exception",
-            message = error.message ?: error.toString(),
-            errorClass = error.javaClass.name,
-            stack = error.stackTraceToString(),
-        )
-    }
     error.printStackTrace()
     Console.printStackTrace(error)
 }

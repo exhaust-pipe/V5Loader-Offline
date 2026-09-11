@@ -1,4 +1,10 @@
-# V5 Developer README
+# V5 Offline
+
+此仓库已改为 Minecraft Java 26.1.2 的本地脚本版。安装、联网白名单、构建命令与平台范围请先阅读 [OFFLINE.md](OFFLINE.md)。原在线版的认证、下载、更新与上报流程已移除。
+
+以下为保留的上游项目背景与许可说明；涉及在线版的使用方式不适用于此构建。
+
+## Upstream Developer README
 
 General users should use the public docs:
 https://rdbt.top/docs/getting-started

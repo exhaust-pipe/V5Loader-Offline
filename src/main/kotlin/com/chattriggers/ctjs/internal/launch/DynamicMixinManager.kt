@@ -54,7 +54,6 @@ internal object DynamicMixinManager {
         if (prepared) return
 
         Mappings.initialize()
-        SecureLoader.onMixinPlugin()
         ModuleManager.setup()
         initialize()
         applyAccessWideners()

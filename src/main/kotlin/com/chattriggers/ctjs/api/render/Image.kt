@@ -9,7 +9,6 @@ import org.lwjgl.system.MemoryUtil
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.net.HttpURLConnection
 import java.nio.ByteBuffer
 import java.util.UUID
 import javax.imageio.ImageIO
@@ -130,13 +129,7 @@ class Image(var image: BufferedImage?) {
         }
 
         private fun getImageFromUrl(url: String): BufferedImage {
-            val req = CTJS.makeWebRequest(url)
-            if (req is HttpURLConnection) {
-                req.requestMethod = "GET"
-                req.doOutput = true
-            }
-
-            return ImageIO.read(req.inputStream)
+            throw UnsupportedOperationException("Use a local image file in V5 Offline")
         }
 
         private fun BufferedImage.toNativeTexture(): Texture {

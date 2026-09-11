@@ -1,25 +1,24 @@
 {
     "schemaVersion": 1,
     "id": "ctjs",
-    "name": "V5",
+    "name": "V5 Offline",
     "version": "$version",
-    "description": "A ChatTriggers fork that supports additional features.",
-    "authors": ["Zurviq, rdbt, EpsilonPhoenix"],
-    "contributors": ["Oblongboot", "Nathan", "IcyHenryT"],
+    "description": "Local scripts only; no vendor authentication, telemetry or updates.",
+    "authors": [
+        "Zurviq, rdbt, EpsilonPhoenix"
+    ],
+    "contributors": [
+        "Oblongboot",
+        "Nathan",
+        "IcyHenryT"
+    ],
     "icon": "assets/v5/icon.png",
-    "license": ["GPL-3.0."],
-    "contact": {
-        "homepage": "https://rdbt.top/",
-        "sources": "https://discord.gg/RvQJq7vE3a",
-        "issues": "https://discord.gg/RvQJq7vE3a"
-    },
+    "license": [
+        "GPL-3.0."
+    ],
     "environment": "client",
     "entrypoints": {
         "preLaunch": [
-            {
-                "value": "com.v5.loader.V5PreLaunch",
-                "adapter": "kotlin"
-            },
             "com.chattriggers.ctjs.internal.launch.CTJSPreLaunch"
         ],
         "client": [
@@ -27,7 +26,10 @@
             "com.chattriggers.ctjs.api.world.pathfinding.Swift"
         ]
     },
-    "mixins": ["ctjs.mixins.json", "v5.mixins.json"],
+    "mixins": [
+        "ctjs.mixins.json",
+        "v5.mixins.json"
+    ],
     "depends": {
         "minecraft": "=$minecraft_version",
         "fabricloader": ">=$loader_version",
@@ -38,13 +40,6 @@
     "breaks": {
         "stfu": "*",
         "nvidium": "*"
-    },
-    "custom": {
-        "modmenu": {
-            "links": {
-                "modmenu.discord": "https://discord.gg/RvQJq7vE3a"
-            }
-        }
     },
     "accessWidener": "ctjs.accesswidener"
 }
