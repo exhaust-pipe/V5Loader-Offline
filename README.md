@@ -1,85 +1,65 @@
-# V5 Offline
+# V5 Local Loader
 
-此仓库已改为 Minecraft Java 26.1.2 的本地脚本版。安装、联网白名单、构建命令与平台范围请先阅读 [OFFLINE.md](OFFLINE.md)。原在线版的认证、下载、更新与上报流程已移除。
+English | [简体中文](README_zh.md)
 
-以下为保留的上游项目背景与许可说明；涉及在线版的使用方式不适用于此构建。
+An offline version of V5Loader with all third-party networking removed. It requires no account, does not download, update, or replace mods, scripts, or helper programs, and does not upload any data.
+This mod requires the similarly modified [V5-Offline](https://github.com/exhaust-pipe/V5-Offline) scripts to work. Since automatic downloads have been removed, you need to download that repository's contents manually. See [Installation](#installation).
 
-## Upstream Developer README
+## Original Project Links
 
-General users should use the public docs:
-https://rdbt.top/docs/getting-started
+- [Original project documentation](https://rdbt.top/docs/getting-started)
+- [Original V5Loader repository](https://github.com/V5-Client/V5Loader)
+- [Original V5 script repository](https://github.com/V5-Client/V5)
 
-The rest of this README is for developers and contributors.
+The original project's copyright and [GPL-3.0 license](LICENSE) are retained. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for third-party licenses.
 
-## License Summary
+## Requirements
 
-This project is licensed under **GNU GPL v3.0**. In short:
+| Component              | Version                 |
+| ---------------------- | ----------------------- |
+| Minecraft              | 26.1.2                  |
+| Fabric Loader          | >= 0.19.3               |
+| Fabric API             | >= 0.153.0+26.1.2       |
+| Fabric Language Kotlin | >= 1.13.9+kotlin.2.3.10 |
 
-1. Anyone can copy, modify, and distribute this software.
-2. Every distribution must include the license text and existing copyright notices.
-3. You can use this software privately.
-4. If you distribute modified versions, you must provide the complete source code under GPL-3.0.
+## Installation
 
-- This means that any forks/copies/clones must have the source code freely available.
+1. Install the mod and the dependencies listed above.
+2. Copy the entire contents of the companion V5-Offline repository to `config/ChatTriggers/modules/V5/`.
+3. Confirm that the directory structure matches the following and that no other version of V5 Loader or ChatTriggers is installed:
 
-## Repositories
-
-V5 is split across two repositories:
-
-- **Fabric mod (V5Loader):** https://github.com/V5-Client/V5Loader  
-  Contains the technical client internals (rendering, pathfinding, ChatTriggers JavaScript engine).
-- **JavaScript module (V5):** https://github.com/V5-Client/V5  
-  Contains macros/scripts used by the client.
-
-## Working on the Fabric Mod ([V5Loader](https://github.com/V5-Client/V5Loader))
-
-Run these commands from the `V5Loader` repository root.
-
-### Build outputs
-
-- `NativeSrc/build/V5PathJNI.so` (Linux x86_64)
-- `NativeSrc/build/V5PathJNI.dylib` (macOS — build per-arch; see below)
-- `NativeSrc/build/Release/V5PathJNI.dll` or `NativeSrc/build/V5PathJNI.dll` (Windows x86_64)
-
-### Bundle output into V5Loader
-
-Copy the built library into the matching per-arch folder:
-
-- `src/main/resources/assets/v5/natives/linux/x86_64/V5PathJNI.so`
-- `src/main/resources/assets/v5/natives/macos/arm64/V5PathJNI.dylib`
-- `src/main/resources/assets/v5/natives/macos/x86_64/V5PathJNI.dylib`
-- `src/main/resources/assets/v5/natives/windows/x86_64/V5PathJNI.dll`
-
-For production release commits, CI builds all platforms in parallel and commits them together.
-
-### Quick dev commands
-
-Each command compiles required native C++ code, then builds the final Kotlin mod. The output can be found at `build/libs/V5-Loader-DEV.jar`.
-
-- **Linux:**
-
-```bash
-cmake -S NativeSrc -B NativeSrc/build -DCMAKE_BUILD_TYPE=Release && cmake --build NativeSrc/build --config Release -j && mkdir -p ./src/main/resources/assets/v5/natives/linux/x86_64 && cp ./NativeSrc/build/V5PathJNI.so ./src/main/resources/assets/v5/natives/linux/x86_64/V5PathJNI.so && ./gradlew build
+```text
+Game directory/
+├─ mods/
+│  ├─ V5-Offline
+│  ├─ fabric-api
+│  └─ fabric-language-kotlin
+└─ config/ChatTriggers/modules/V5/
+   ├─ metadata.json
+   ├─ loader.js
+   ├─ utils/
+   └─ assets/
 ```
 
-- **macOS (Apple Silicon):**
+## Usage and Updates
 
-```bash
-cmake -S NativeSrc -B NativeSrc/build-arm64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 && cmake --build NativeSrc/build-arm64 --config Release -j && mkdir -p ./src/main/resources/assets/v5/natives/macos/arm64 && cp ./NativeSrc/build-arm64/V5PathJNI.dylib ./src/main/resources/assets/v5/natives/macos/arm64/V5PathJNI.dylib && ./gradlew build
-```
+- Use `/v5` to open the interface, or assign a key binding manually.
+- To update scripts, manually replace the files in `config/ChatTriggers/modules/V5/`, then run `/ct load`. Changes involving dynamic mixins require a game restart.
+- Place custom scripts in `config/ChatTriggers/modules/V5Config/UserScripts/`.
+- Logs are stored in `logs/latest.log`. `/ct console` displays the log location.
 
-- **macOS (Intel):**
+Item and Bazaar market data come from the official API. The cache is stored in `config/ChatTriggers/modules/V5Config/public-data/`.
 
-```bash
-cmake -S NativeSrc -B NativeSrc/build-x86_64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64 && cmake --build NativeSrc/build-x86_64 --config Release -j && mkdir -p ./src/main/resources/assets/v5/natives/macos/x86_64 && cp ./NativeSrc/build-x86_64/V5PathJNI.dylib ./src/main/resources/assets/v5/natives/macos/x86_64/V5PathJNI.dylib && ./gradlew build
-```
+## Building from Source
 
-- **Windows (PowerShell):**
+Prepare JDK 25, CMake, and MinGW. Make sure `JAVA_HOME` points to JDK 25 and the required tools are available in the current terminal's `PATH`. Run the following PowerShell commands from this repository's directory:
 
 ```powershell
-cmake -S NativeSrc -B NativeSrc/build -DCMAKE_BUILD_TYPE=Release; cmake --build NativeSrc/build --config Release --parallel; New-Item -ItemType Directory -Force -Path .\src\main\resources\assets\v5\natives\windows\x86_64 | Out-Null; if (Test-Path .\NativeSrc\build\Release\V5PathJNI.dll) { Copy-Item .\NativeSrc\build\Release\V5PathJNI.dll .\src\main\resources\assets\v5\natives\windows\x86_64\V5PathJNI.dll -Force } else { Copy-Item .\NativeSrc\build\V5PathJNI.dll .\src\main\resources\assets\v5\natives\windows\x86_64\V5PathJNI.dll -Force }; .\gradlew build
+$env:GRADLE_USER_HOME = Join-Path (Split-Path $PWD -Parent) '.AI_work/gradle-home'
+cmake -S NativeSrc -B ../.AI_work/native-build -G 'MinGW Makefiles' -DCMAKE_BUILD_TYPE=Release '-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++ -static'
+cmake --build ../.AI_work/native-build --parallel
+Copy-Item ../.AI_work/native-build/V5PathJNI.dll src/main/resources/assets/v5/natives/windows/x86_64/V5PathJNI.dll -Force
+./gradlew.bat build --no-daemon
 ```
 
-### Install built mod
-
-After building, copy `build/libs/V5-Loader-DEV.jar` into `.minecraft/mods/`.
+The build output is `build/libs/V5-Offline-26.1.2.jar`. The first build requires downloading dependencies. Once the dependency cache is complete, you can use `./gradlew.bat build --offline --no-daemon`.
