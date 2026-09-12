@@ -42,6 +42,7 @@ sealed interface ITriggerType {
 enum class TriggerType : ITriggerType {
     // client
     CHAT,
+    SKYDIAO_SYSTEM_MESSAGE,
     ACTION_BAR,
     TICK,
     STEP,

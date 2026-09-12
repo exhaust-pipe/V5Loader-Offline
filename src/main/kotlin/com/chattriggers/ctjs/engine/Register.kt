@@ -83,6 +83,12 @@ object Register {
         return ChatTrigger(method, TriggerType.CHAT)
     }
 
+    /** Receives the raw body of a Skydiao IRC system message on the client thread. Cannot be cancelled. */
+    @JvmStatic
+    fun registerSkydiaoSystemMessage(method: Any): Trigger {
+        return RegularTrigger(method, TriggerType.SKYDIAO_SYSTEM_MESSAGE)
+    }
+
     /**
      * Registers a new trigger that runs before an action bar message is received.
      *
