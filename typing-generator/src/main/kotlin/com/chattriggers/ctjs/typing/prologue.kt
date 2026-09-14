@@ -86,6 +86,7 @@ val prologue = """
       packetReceived(packet: net.minecraft.network.packet.Packet<unknown>, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.PacketTrigger;
       serverConnect(): com.chattriggers.ctjs.api.triggers.Trigger;
       serverDisconnect(): com.chattriggers.ctjs.api.triggers.Trigger;
+      gameStateChanged(event: com.chattriggers.ctjs.api.client.GameState${'$'}Event): com.chattriggers.ctjs.api.triggers.Trigger;
       renderEntity(entity: Entity, partialTicks: number, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.RenderEntityTrigger;
       renderBlockEntity(blockEntity: BlockEntity, partialTicks: number, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.RenderBlockEntityTrigger;
       postGuiRender(mouseX: number, mouseY: number, screen: net.minecraft.client.gui.screen.Screen): com.chattriggers.ctjs.api.triggers.Trigger;

@@ -79,17 +79,11 @@ object Client {
      * This acts just like clicking the "Disconnect" or "Save and quit to title" button.
      */
     @JvmStatic
-    fun disconnect() {
-        scheduleTask {
-            World.toMC()?.disconnect(Component.empty())
-
-            getMinecraft().setScreen(
-                when {
-                    getMinecraft().isLocalServer -> TitleScreen()
-                    getMinecraft().currentServer?.isRealm == true -> RealmsMainScreen(TitleScreen())
-                    else -> JoinMultiplayerScreen(TitleScreen())
-                }
-            )
+    @JvmOverloads
+    fun disconnect(reason: String = "Disconnected by script", source: String = "script") {
+        getMinecraft().execute {
+            GameState.markActive("script", source)
+            getMinecraft().disconnectFromWorld(Component.literal(reason))
         }
     }
 
@@ -99,16 +93,18 @@ object Client {
      */
     @JvmStatic
     @JvmOverloads
-    fun connect(ip: String, port: Int = 25565) {
-        scheduleTask {
-            ConnectScreen.startConnecting(
-                JoinMultiplayerScreen(TitleScreen()),
-                getMinecraft(),
-                ServerAddress(ip, port),
-                ServerData("Server", ip, ServerData.Type.OTHER),
-                false,
-                null,
-            )
+    fun connect(ip: String, port: Int = 25565, source: String = "script") {
+        getMinecraft().execute {
+            GameState.withConnectingSource(source) {
+                ConnectScreen.startConnecting(
+                    JoinMultiplayerScreen(TitleScreen()),
+                    getMinecraft(),
+                    ServerAddress(ip, port),
+                    ServerData("Server", if (port == 25565) ip else "$ip:$port", ServerData.Type.OTHER),
+                    false,
+                    null,
+                )
+            }
         }
     }
 

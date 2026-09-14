@@ -50,6 +50,8 @@ interface RegisterTypes {
   packetReceived(packet: net.minecraft.network.packet.Packet<unknown>, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.PacketTrigger;
   serverConnect(): com.chattriggers.ctjs.api.triggers.Trigger;
   serverDisconnect(): com.chattriggers.ctjs.api.triggers.Trigger;
+
+  gameStateChanged(event: com.chattriggers.ctjs.api.client.GameState$Event): com.chattriggers.ctjs.api.triggers.Trigger;
   renderEntity(entity: Entity, partialTicks: number, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.RenderEntityTrigger;
   renderBlockEntity(blockEntity: BlockEntity, partialTicks: number, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.RenderBlockEntityTrigger;
   postGuiRender(mouseX: number, mouseY: number, screen: net.minecraft.client.gui.screen.Screen): com.chattriggers.ctjs.api.triggers.Trigger;
@@ -43536,6 +43538,24 @@ declare global {
       namespace ctjs {
         namespace api {
           namespace client {
+            const GameState: { getCurrent(): com.chattriggers.ctjs.api.client.GameState$Event; };
+
+            interface GameState$Event {
+
+                readonly id: number;
+
+                readonly state: 'OFFLINE' | 'CONNECTING' | 'PLAYING' | 'TRANSITION' | 'DISCONNECTED';
+
+                readonly cause: 'none' | 'manual' | 'script' | 'unexpected' | 'banned' | 'world_change' | 'world_load' | 'transfer';
+
+                readonly source: string;
+
+                readonly reason: string;
+
+                readonly server: string;
+
+            }
+
             const Client: {
               CurrentGuiWrapper: typeof com.chattriggers.ctjs.api.client.Client$CurrentGuiWrapper;
               CameraWrapper: typeof com.chattriggers.ctjs.api.client.Client$CameraWrapper;
@@ -43572,6 +43592,10 @@ declare global {
 							 *  This acts just like clicking the "Disconnect" or "Save and quit to title" button.
 							 */
               disconnect(): void;
+
+              disconnect(reason: string): void;
+
+              disconnect(reason: string, source: string): void;
 							/**
 							 * Connects to the server with the given ip.
 							 *  @param ip The ip to connect to
@@ -43582,6 +43606,8 @@ declare global {
 							 *  @param ip The ip to connect to
 							 */
               connect(ip: string, port: number): void;
+
+              connect(ip: string, port: number, source: string): void;
 							/**
 							 * Gets the Minecraft ChatHud object for the chat gui
 							 *
@@ -43729,6 +43755,10 @@ declare global {
 							 *  This acts just like clicking the "Disconnect" or "Save and quit to title" button.
 							 */
               disconnect(): void;
+
+              disconnect(reason: string): void;
+
+              disconnect(reason: string, source: string): void;
 							/**
 							 * Connects to the server with the given ip.
 							 *  @param ip The ip to connect to
@@ -43739,6 +43769,8 @@ declare global {
 							 *  @param ip The ip to connect to
 							 */
               connect(ip: string, port: number): void;
+
+              connect(ip: string, port: number, source: string): void;
 							/**
 							 * Gets the Minecraft ChatHud object for the chat gui
 							 *
@@ -51522,6 +51554,8 @@ declare global {
               PACKET_RECEIVED: com.chattriggers.ctjs.api.triggers.TriggerType;
               SERVER_CONNECT: com.chattriggers.ctjs.api.triggers.TriggerType;
               SERVER_DISCONNECT: com.chattriggers.ctjs.api.triggers.TriggerType;
+
+              GAME_STATE_CHANGED: com.chattriggers.ctjs.api.triggers.TriggerType;
               GUI_CLOSED: com.chattriggers.ctjs.api.triggers.TriggerType;
               DROP_ITEM: com.chattriggers.ctjs.api.triggers.TriggerType;
               PRE_RENDER_WORLD: com.chattriggers.ctjs.api.triggers.TriggerType;
@@ -52279,6 +52313,8 @@ declare global {
 						 *  @return The trigger for additional modification
 						 */
             registerServerDisconnect(method: any): com.chattriggers.ctjs.api.triggers.Trigger;
+
+            registerGameStateChanged(method: any): com.chattriggers.ctjs.api.triggers.Trigger;
 						/**
 						 * Registers a new trigger that runs whenever an entity is rendered
 						 *
@@ -52849,6 +52885,8 @@ declare global {
 						 *  @return The trigger for additional modification
 						 */
             registerServerDisconnect(method: any): com.chattriggers.ctjs.api.triggers.Trigger;
+
+            registerGameStateChanged(method: any): com.chattriggers.ctjs.api.triggers.Trigger;
 						/**
 						 * Registers a new trigger that runs whenever an entity is rendered
 						 *

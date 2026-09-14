@@ -62,6 +62,7 @@ enum class TriggerType : ITriggerType {
     PACKET_RECEIVED,
     SERVER_CONNECT,
     SERVER_DISCONNECT,
+    GAME_STATE_CHANGED,
     GUI_CLOSED,
     DROP_ITEM,
 
