@@ -76,8 +76,6 @@ java {
 
 tasks {
     processResources {
-        // This Windows build only ships the native library rebuilt from NativeSrc.
-        exclude("assets/v5/natives/linux/**", "assets/v5/natives/macos/**")
         val mcVersion = libs.versions.minecraft.get()
         val flkVersion = libs.versions.fabric.kotlin.get()
         val fapiVersion = libs.versions.fabric.api.get()

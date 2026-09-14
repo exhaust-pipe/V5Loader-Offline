@@ -7,19 +7,25 @@ on:
     paths:
       - "NativeSrc/**"
       - "src/**"
-      - "typing-generator/src/**"
+      - "typing-generator/**"
+      - "gradle.properties"
+      - ".github/workflows/**"
       - "**/*.gradle.kts"
       - "gradle/**"
       - "gradlew"
       - "gradlew.bat"
   workflow_dispatch:
 
+concurrency:
+  group: compile-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   detect-native:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     outputs:
       native_changed: ${{ steps.native.outputs.native_changed }}
       should_build: ${{ steps.native.outputs.should_build }}
@@ -65,7 +71,7 @@ jobs:
 
           CHANGED="$(git diff --name-only "$BEFORE" "$AFTER" --)"
 
-          if echo "$CHANGED" | grep -Eq '^NativeSrc/'; then
+          if echo "$CHANGED" | grep -Eq '^(NativeSrc/|\.github/workflows/(native-.*|compile-all)\.yml$)'; then
             echo "native_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "native_changed=false" >> "$GITHUB_OUTPUT"
@@ -108,9 +114,11 @@ jobs:
         needs.macos.result == 'success' &&
         needs.windows.result == 'success'
       }}
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
+    outputs:
+      head_sha: ${{ steps.commit.outputs.head_sha }}
     env:
       BRANCH: ${{ github.ref_name }}
     steps:
@@ -155,6 +163,7 @@ jobs:
           rm -f src/main/resources/assets/v5/V5PathJNI.dll
 
       - name: Commit bundled natives
+        id: commit
         shell: bash
         run: |
           set -euo pipefail
@@ -174,9 +183,9 @@ jobs:
             git commit -F .git/JNI_COMMIT_MSG
             rm -f .git/JNI_COMMIT_MSG
             git fetch origin "$BRANCH" --depth=50
-            git rebase "origin/$BRANCH"
             git push origin HEAD:"$BRANCH"
           fi
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   resolve-head:
     needs:
@@ -191,7 +200,7 @@ jobs:
           needs['bundle-natives'].result == 'success'
         )
       }}
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     env:
@@ -204,14 +213,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve latest branch HEAD SHA
+      - name: Resolve exact build commit SHA
         id: resolve_sha
         shell: bash
         run: |
           set -euo pipefail
           if [[ "${{ needs['detect-native'].outputs.native_changed }}" == "true" ]]; then
-            git fetch origin "$BRANCH" --depth=50
-            echo "head_sha=$(git rev-parse "origin/$BRANCH")" >> "$GITHUB_OUTPUT"
+            echo "head_sha=${{ needs['bundle-natives'].outputs.head_sha }}" >> "$GITHUB_OUTPUT"
           else
             echo "head_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           fi
@@ -222,8 +230,5 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/build.yml
-    secrets:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     with:
       sha: ${{ needs.resolve-head.outputs.head_sha }}
