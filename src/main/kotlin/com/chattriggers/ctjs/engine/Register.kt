@@ -697,6 +697,12 @@ object Register {
         return RegularTrigger(method, TriggerType.SERVER_DISCONNECT)
     }
 
+    /** Fires before legacy unload events, with a GameState.Event describing the cause and source. */
+    @JvmStatic
+    fun registerGameStateChanged(method: Any): Trigger {
+        return RegularTrigger(method, TriggerType.GAME_STATE_CHANGED)
+    }
+
     /**
      * Registers a new trigger that runs whenever an entity is rendered
      *

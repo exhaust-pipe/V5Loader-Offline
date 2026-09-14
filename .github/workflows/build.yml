@@ -1,37 +1,46 @@
-name: build
+name: Build
 
 on:
-  workflow_call:
-    inputs:
-      sha:
-        description: "Commit SHA to run against (optional)."
-        required: false
-        type: string
-    secrets:
-      CLOUDFLARE_API_TOKEN:
-        required: false
-      CLOUDFLARE_ACCOUNT_ID:
-        required: false
+  push:
+    branches:
+      - "**"
+    paths:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+      - "src/main/resources/**"
+      - "!src/main/resources/assets/v5/natives/**"
+      - "typing-generator/src/**"
+  pull_request:
+    paths:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+      - "src/main/resources/**"
+      - "!src/main/resources/assets/v5/natives/**"
+      - "typing-generator/src/**"
 
 permissions:
   contents: read
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ inputs.sha || github.sha }}
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - name: Setup Java 25
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
-      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      - name: Cache Gradle
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -41,62 +50,23 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build
-        run: ./gradlew --no-daemon build -PreleaseBuild
+        run: bash ./gradlew --no-daemon build
 
-      - name: Upload Loader
+      - name: Resolve build artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          MC_VERSION="$(sed -nE 's/^minecraft = "([^"]+)"/\1/p' gradle/libs.versions.toml)"
+          MOD_VERSION="$(sed -n 's/^mod_version *= *//p' gradle.properties | tr -d '\r')"
+          JAR="build/libs/V5-Offline-${MOD_VERSION}-${MC_VERSION}.jar"
+          test -f "$JAR"
+          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          echo "name=V5-Offline-${MOD_VERSION}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: V5-Loader-26.1.2
-          path: build/libs/V5-Loader-26.1.2.jar
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ steps.artifact.outputs.path }}
           if-no-files-found: error
-
-  publish:
-    needs: build
-    if: ${{ github.ref == 'refs/heads/26.1.2' }}
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ inputs.sha || github.sha }}
-
-      - name: Download Loader
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: V5-Loader-26.1.2
-          path: build/libs
-
-      - name: Publish GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ inputs.sha || github.sha }}
-        run: |
-          version=$(sed -nE 's/^[[:space:]]*const val MOD_VERSION = "([^"]+)".*/\1/p' src/main/kotlin/com/chattriggers/ctjs/CTJS.kt)
-          test -n "$version"
-          prefix="${version//./\\.}-r"
-          tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.target_commitish == \"$SHA\") | .tag_name" | sed -nE "s/^${prefix}[0-9]+$/&/p" | head -n1)
-          if [ -z "$tag" ]; then
-            revision=$(gh release list --limit 1000 --json tagName --jq '.[].tagName' | sed -nE "s/^${prefix}([0-9]+)$/\1/p" | sort -n | tail -n1)
-            tag="${version}-r$(( ${revision:-0} + 1 ))"
-            gh release create "$tag" --target "$SHA" --title "$tag" --generate-notes
-          fi
-          gh release upload "$tag" build/libs/V5-Loader-26.1.2.jar --clobber
-
-      - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-
-      - name: Install Wrangler
-        run: npm install -g wrangler@4.110.0 --prefer-offline
-
-      - name: Upload Loader to Cloudflare R2
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          sha256sum build/libs/V5-Loader-26.1.2.jar | awk '{print $1}' > V5-Loader-26.1.2.jar.sha256
-          wrangler r2 object put v5-builds/V5-Loader-26.1.2.jar.sha256 --file V5-Loader-26.1.2.jar.sha256 --remote
-          wrangler r2 object put v5-builds/V5-Loader-26.1.2.jar --file build/libs/V5-Loader-26.1.2.jar --remote

@@ -2,6 +2,11 @@ package com.chattriggers.ctjs.internal.mixins;
 
 import com.chattriggers.ctjs.internal.engine.CTEvents;
 import com.chattriggers.ctjs.api.triggers.TriggerType;
+import com.chattriggers.ctjs.api.client.GameState;
+import net.minecraft.network.DisconnectionDetails;
+import net.minecraft.network.protocol.common.ClientboundDisconnectPacket;
+import net.minecraft.network.protocol.common.ClientboundTransferPacket;
+import net.minecraft.network.protocol.login.ClientboundLoginDisconnectPacket;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
@@ -32,6 +37,37 @@ public abstract class ConnectionMixin {
     private void injectHandlePacket(ChannelHandlerContext channelHandlerContext, Packet<?> packet, CallbackInfo ci) {
         if (getReceiving() == PacketFlow.CLIENTBOUND)
             CTEvents.PACKET_RECEIVED.invoker().receive(packet, ci);
+        if (ci.isCancelled()) return;
+        if (packet instanceof ClientboundDisconnectPacket || packet instanceof ClientboundLoginDisconnectPacket)
+            GameState.mark((Connection) (Object) this, "unexpected", "server");
+        else if (packet instanceof ClientboundTransferPacket)
+            GameState.mark((Connection) (Object) this, "transfer", "server");
+    }
+
+    @Inject(method = "initiateServerboundPlayConnection", at = @At("HEAD"))
+    private void bindPlayConnection(CallbackInfo ci) {
+        GameState.bind((Connection) (Object) this);
+    }
+
+    @Inject(method = "channelInactive", at = @At("HEAD"))
+    private void networkClosed(ChannelHandlerContext context, CallbackInfo ci) {
+        GameState.mark((Connection) (Object) this, "unexpected", "network");
+    }
+
+    @Inject(method = "exceptionCaught", at = @At("HEAD"))
+    private void networkFailed(ChannelHandlerContext context, Throwable error, CallbackInfo ci) {
+        GameState.mark((Connection) (Object) this, "unexpected", "network");
+    }
+
+    @Inject(method = "disconnect(Lnet/minecraft/network/DisconnectionDetails;)V", at = @At("HEAD"))
+    private void localClosed(DisconnectionDetails details, CallbackInfo ci) {
+        GameState.markLocal((Connection) (Object) this);
+    }
+
+    @Inject(method = "handleDisconnection", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/PacketListener;onDisconnect(Lnet/minecraft/network/DisconnectionDetails;)V"))
+    private void notifyClosed(CallbackInfo ci) {
+        Connection connection = (Connection) (Object) this;
+        GameState.connectionClosed(connection, connection.getDisconnectionDetails());
     }
 
     @Inject(

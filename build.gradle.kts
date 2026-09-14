@@ -9,6 +9,8 @@ plugins {
 }
 
 version = property("mod_version").toString()
+val minecraftVersion = libs.versions.minecraft.get()
+val releaseJarName = "V5-Offline-${project.version}-$minecraftVersion.jar"
 
 repositories {
     mavenCentral()
@@ -76,9 +78,7 @@ java {
 
 tasks {
     processResources {
-        // This Windows build only ships the native library rebuilt from NativeSrc.
-        exclude("assets/v5/natives/linux/**", "assets/v5/natives/macos/**")
-        val mcVersion = libs.versions.minecraft.get()
+        val mcVersion = minecraftVersion
         val flkVersion = libs.versions.fabric.kotlin.get()
         val fapiVersion = libs.versions.fabric.api.get()
         val loaderVersion = libs.versions.loader.get()
@@ -117,7 +117,7 @@ tasks {
     }
 
     jar {
-        archiveFileName.set("V5-Offline-26.1.2.jar")
+        archiveFileName.set(releaseJarName)
         exclude("typings.d.ts")
         from("LICENSE")
         from("THIRD_PARTY_LICENSES.md")
