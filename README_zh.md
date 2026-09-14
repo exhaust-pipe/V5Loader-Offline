@@ -25,7 +25,7 @@ V5Loader的离线版本，删除了所有第三方联网内容，不需要账号
 ## 安装
 
 1. 安装mod和上述依赖
-2. 将配套 V5-Offline 仓库的内容完整复制到 `config/ChatTriggers/modules/V5/`
+2. 将配套 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) 发布的zip文件作为一个**文件夹**完整解压到 `config/ChatTriggers/modules/`，并确认该文件夹名称为V5，使结构变为：`config/ChatTriggers/modules/V5`
 3. 确认目录结构如下，且没有同时安装其他版本的 V5 Loader 或 ChatTriggers：
 
 ```text

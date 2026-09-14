@@ -25,7 +25,7 @@ The original project's copyright and [GPL-3.0 license](LICENSE) are retained. Se
 ## Installation
 
 1. Install the mod and the dependencies listed above.
-2. Copy the entire contents of the companion V5-Offline repository to `config/ChatTriggers/modules/V5/`.
+2. Extract the zip file released with [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) as a **folder** directly into `config/ChatTriggers/modules/`. Ensure the folder is named `V5`, resulting in the following structure: `config/ChatTriggers/modules/V5`.
 3. Confirm that the directory structure matches the following and that no other version of V5 Loader or ChatTriggers is installed:
 
 ```text
