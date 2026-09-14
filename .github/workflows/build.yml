@@ -1,32 +1,53 @@
-name: build
+name: Build
 
 on:
-  workflow_call:
-    inputs:
-      sha:
-        description: "Commit SHA to run against (optional)."
-        required: false
-        type: string
+  push:
+    branches:
+      - "**"
+    paths:
+      - "src/**"
+      - "typing-generator/**"
+      - "gradle.properties"
+      - "**/*.gradle.kts"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - ".github/workflows/build.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "typing-generator/**"
+      - "gradle.properties"
+      - "**/*.gradle.kts"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ inputs.sha || github.sha }}
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - name: Setup Java 25
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      - name: Cache Gradle
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -36,46 +57,11 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build
-        run: bash ./gradlew --no-daemon build -PreleaseBuild
+        run: bash ./gradlew --no-daemon build
 
-      - name: Upload Loader
+      - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: V5-Offline-26.1.2
+          name: V5-Offline-${{ github.sha }}
           path: build/libs/V5-Offline-26.1.2.jar
           if-no-files-found: error
-
-  publish:
-    needs: build
-    if: ${{ github.ref == 'refs/heads/26.1.2' }}
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ inputs.sha || github.sha }}
-
-      - name: Download Loader
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: V5-Offline-26.1.2
-          path: build/libs
-
-      - name: Publish GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          SHA: ${{ inputs.sha || github.sha }}
-        run: |
-          version=$(sed -n 's/^mod_version *= *//p' gradle.properties | tr -d '\r')
-          test -n "$version"
-          prefix="${version//./\\.}-r"
-          tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.target_commitish == \"$SHA\") | .tag_name" | sed -nE "s/^${prefix}[0-9]+$/&/p" | head -n1)
-          if [ -z "$tag" ]; then
-            revision=$(gh release list --limit 1000 --json tagName --jq '.[].tagName' | sed -nE "s/^${prefix}([0-9]+)$/\1/p" | sort -n | tail -n1)
-            tag="${version}-r$(( ${revision:-0} + 1 ))"
-            gh release create "$tag" --target "$SHA" --title "$tag" --generate-notes
-          fi
-          gh release upload "$tag" build/libs/V5-Offline-26.1.2.jar --clobber
