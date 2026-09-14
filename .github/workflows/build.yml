@@ -5,25 +5,18 @@ on:
     branches:
       - "**"
     paths:
-      - "src/**"
-      - "typing-generator/**"
-      - "gradle.properties"
-      - "**/*.gradle.kts"
-      - "gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
-      - ".github/workflows/build.yml"
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+      - "src/main/resources/**"
+      - "!src/main/resources/assets/v5/natives/**"
+      - "typing-generator/src/**"
   pull_request:
     paths:
-      - "src/**"
-      - "typing-generator/**"
-      - "gradle.properties"
-      - "**/*.gradle.kts"
-      - "gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
-      - ".github/workflows/build.yml"
-  workflow_dispatch:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+      - "src/main/resources/**"
+      - "!src/main/resources/assets/v5/natives/**"
+      - "typing-generator/src/**"
 
 permissions:
   contents: read
@@ -59,9 +52,21 @@ jobs:
       - name: Build
         run: bash ./gradlew --no-daemon build
 
+      - name: Resolve build artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          MC_VERSION="$(sed -nE 's/^minecraft = "([^"]+)"/\1/p' gradle/libs.versions.toml)"
+          MOD_VERSION="$(sed -n 's/^mod_version *= *//p' gradle.properties | tr -d '\r')"
+          JAR="build/libs/V5-Offline-${MOD_VERSION}-${MC_VERSION}.jar"
+          test -f "$JAR"
+          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          echo "name=V5-Offline-${MOD_VERSION}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: V5-Offline-${{ github.sha }}
-          path: build/libs/V5-Offline-26.1.2.jar
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ steps.artifact.outputs.path }}
           if-no-files-found: error

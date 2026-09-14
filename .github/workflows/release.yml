@@ -44,16 +44,16 @@ jobs:
           test -n "$TAG"
           bash ./gradlew --no-daemon build -PreleaseBuild -Pmod_version="$TAG"
 
-      - name: Prepare release asset
+      - name: Resolve release asset
         id: asset
         shell: bash
         env:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          SAFE_TAG="${TAG//\//-}"
-          ASSET="build/libs/V5-Offline-${SAFE_TAG}.jar"
-          cp build/libs/V5-Offline-26.1.2.jar "$ASSET"
+          MC_VERSION="$(sed -nE 's/^minecraft = "([^"]+)"/\1/p' gradle/libs.versions.toml)"
+          ASSET="build/libs/V5-Offline-${TAG}-${MC_VERSION}.jar"
+          test -f "$ASSET"
           echo "path=$ASSET" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
