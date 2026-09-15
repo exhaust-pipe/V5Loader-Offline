@@ -10,7 +10,7 @@
     "MultiPlayerGameModeAccessor", "MultiPlayerGameModeMixin", "ClientPacketListenerAccessor", "ClientLevelAccessor",
     "ConnectScreenAccessor", "ConnectScreenMixin", "DisconnectedScreenAccessor", "CreativeModeInventoryScreenMixin",
     "CrossCollisionBlockMixin", "EntityRendererMixin", "EntityRenderDispatcherMixin", "EntityRenderStateMixin",
-    "FirmamentModAnnouncerMixin", "FontMixin", "FramerateLimitTrackerMixin", "FrustumMixin", "GuiRendererBackendMixin",
+    "FirmamentModAnnouncerMixin", "FontMixin", "FramerateLimitTrackerMixin", "FrustumMixin",
     "OptionsAccessor", "OptionsMixin", "AbstractContainerScreenAccessor", "AbstractContainerScreenMixin", "@version_mixins@",
     "GuiGraphicsExtractorMixin", "GuiRendererMixin", "ItemInHandRendererMixin", "KeyMappingAccessor", "KeyMappingAccessor$Category",
     "KeyboardHandlerMixin", "MinecraftAccessor", "MinecraftMixin", "MouseHandlerMixin", "ParticleAccessor", "ParticleEngineMixin",
