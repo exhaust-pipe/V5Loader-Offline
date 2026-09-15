@@ -6,7 +6,7 @@
   "client": [
     "AbstractSignEditScreenAccessor", "AbstractSoundInstanceAccessor", "BlockEntityRenderStateMixin", "BookViewScreenAccessor",
     "BossHealthOverlayAccessor", "CameraMixin", "ChatComponentAccessor", "ChatComponentMixin", "ChatScreenAccessor",
-    "AbstractWidgetAccessor", "ClientChunkCacheAccessor", "ClientChunkMapAccessor", "ClientOfflineCompatMixin", "LocalPlayerMixin",
+    "AbstractWidgetAccessor", "ClientChunkCacheAccessor", "ClientChunkMapAccessor", "LocalPlayerMixin",
     "MultiPlayerGameModeAccessor", "MultiPlayerGameModeMixin", "ClientPacketListenerAccessor", "ClientLevelAccessor",
     "ConnectScreenAccessor", "ConnectScreenMixin", "DisconnectedScreenAccessor", "CreativeModeInventoryScreenMixin",
     "CrossCollisionBlockMixin", "EntityRendererMixin", "EntityRenderDispatcherMixin", "EntityRenderStateMixin",
