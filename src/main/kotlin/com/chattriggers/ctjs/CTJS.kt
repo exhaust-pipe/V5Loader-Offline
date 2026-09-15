@@ -7,7 +7,8 @@ import com.chattriggers.ctjs.api.client.Sound
 import com.chattriggers.ctjs.api.commands.DynamicCommands
 import com.chattriggers.ctjs.api.message.ChatLib
 import com.chattriggers.ctjs.api.render.Image
-import com.chattriggers.ctjs.api.render.NVGRenderer
+import com.chattriggers.ctjs.api.render.Render2D
+import com.chattriggers.ctjs.api.render.skia.createSkijaPIP
 import com.chattriggers.ctjs.api.triggers.TriggerType
 import com.chattriggers.ctjs.api.world.Scoreboard
 import com.chattriggers.ctjs.api.world.World
@@ -18,32 +19,43 @@ import com.chattriggers.ctjs.internal.engine.module.ModuleManager
 import com.chattriggers.ctjs.internal.utils.Initializer
 import kotlinx.serialization.json.Json
 import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
+import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import kotlin.concurrent.thread
 
 class CTJS : ClientModInitializer {
     override fun onInitializeClient() {
+        PictureInPictureRendererRegistry.register { input -> createSkijaPIP(input, pre = false) }
+        PictureInPictureRendererRegistry.register { input -> createSkijaPIP(input, pre = true) }
         Client.referenceSystemTime = System.nanoTime()
         Initializer.initializers.forEach(Initializer::init)
+        Config.loadData()
 
-        Runtime.getRuntime().addShutdownHook(Thread {
+        ClientLifecycleEvents.CLIENT_STOPPING.register { _ ->
+            Render2D.destroy()
             TriggerType.GAME_UNLOAD.triggerAll()
             Console.close()
-        })
+        }
     }
 
     companion object {
         const val MOD_ID = "ctjs"
-        const val MOD_VERSION = "5.1.1"
+        const val WEBSITE_ROOT = "https://www.chattriggers.com"
+        val MOD_VERSION = FabricLoader.getInstance().getModContainer(MOD_ID).orElseThrow().metadata.version.friendlyString
         const val MODULES_FOLDER = "./config/ChatTriggers/modules"
 
         val configLocation = File("./config")
         val assetsDir = File(configLocation, "ChatTriggers/assets/").apply { mkdirs() }
 
         @JvmStatic
+        @Volatile
         var isLoaded = true
             private set
+
+        @Volatile
+        private var isReloading = false
 
         internal val images = mutableListOf<Image>()
         internal val sounds = mutableListOf<Sound>()
@@ -60,7 +72,6 @@ class CTJS : ClientModInitializer {
             TriggerType.WORLD_UNLOAD.triggerAll()
             TriggerType.GAME_UNLOAD.triggerAll()
             Scoreboard.clearCustom()
-
             isLoaded = false
 
             ModuleManager.teardown()
@@ -68,47 +79,42 @@ class CTJS : ClientModInitializer {
             Register.clearCustomTriggers()
             StaticCommand.unregisterAll()
             DynamicCommands.unregisterAll()
-            NVGRenderer.clearCallbacks()
+            Render2D.clearCallbacks()
 
-            if (Config.clearConsoleOnLoad)
-                Console.clear()
+            if (Config.clearConsoleOnLoad) Console.clear()
 
             Client.scheduleTask {
-                images.forEach(Image::destroy)
-                sounds.forEach(Sound::destroy)
-
-                images.clear()
-                sounds.clear()
+                Render2D.destroy()
+                images.toList().forEach(Image::destroy)
+                sounds.toList().forEach(Sound::destroy)
             }
 
-            if (asCommand)
-                ChatLib.chat("&7Unloaded ChatTriggers")
+            if (asCommand) ChatLib.chat("&7Unloaded ChatTriggers")
         }
 
         @JvmStatic
+        @Synchronized
         fun load(asCommand: Boolean = true) {
+            if (isReloading) return
+            isReloading = true
+
             Client.getMinecraft().options.save()
             unload(asCommand = false)
-
-            if (asCommand)
-                ChatLib.chat("&cReloading ChatTriggers...")
+            if (asCommand) ChatLib.chat("&cReloading ChatTriggers...")
 
             thread {
-                ModuleManager.setup()
-                Client.getMinecraft().options.load()
+                try {
+                    ModuleManager.setup()
+                    Client.getMinecraft().options.load()
+                    isLoaded = true
+                    ModuleManager.entryPass()
 
-                // Need to set isLoaded to true before running modules, otherwise custom triggers
-                // activated at the top level will not work
-                isLoaded = true
-
-                ModuleManager.entryPass()
-
-                if (asCommand)
-                    ChatLib.chat("&aDone reloading!")
-
-                TriggerType.GAME_LOAD.triggerAll()
-                if (World.isLoaded())
-                    TriggerType.WORLD_LOAD.triggerAll()
+                    if (asCommand) ChatLib.chat("&aDone reloading!")
+                    TriggerType.GAME_LOAD.triggerAll()
+                    if (World.isLoaded()) TriggerType.WORLD_LOAD.triggerAll()
+                } finally {
+                    isReloading = false
+                }
             }
         }
     }

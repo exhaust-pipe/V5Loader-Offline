@@ -6,23 +6,6 @@ val manualRoots = setOf(
     "java.util.HashMap",
     "gg.essential.universal.UKeyboard",
     "net.minecraft.util.Hand",
-    "org.lwjgl.opengl.GL11",
-    "org.lwjgl.opengl.GL12",
-    "org.lwjgl.opengl.GL13",
-    "org.lwjgl.opengl.GL14",
-    "org.lwjgl.opengl.GL15",
-    "org.lwjgl.opengl.GL20",
-    "org.lwjgl.opengl.GL21",
-    "org.lwjgl.opengl.GL30",
-    "org.lwjgl.opengl.GL31",
-    "org.lwjgl.opengl.GL32",
-    "org.lwjgl.opengl.GL33",
-    "org.lwjgl.opengl.GL40",
-    "org.lwjgl.opengl.GL41",
-    "org.lwjgl.opengl.GL42",
-    "org.lwjgl.opengl.GL43",
-    "org.lwjgl.opengl.GL44",
-    "org.lwjgl.opengl.GL45",
     "org.spongepowered.asm.mixin.injection.callback.CallbackInfo",
 )
 
@@ -86,7 +69,6 @@ val prologue = """
       packetReceived(packet: net.minecraft.network.packet.Packet<unknown>, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.PacketTrigger;
       serverConnect(): com.chattriggers.ctjs.api.triggers.Trigger;
       serverDisconnect(): com.chattriggers.ctjs.api.triggers.Trigger;
-      gameStateChanged(event: com.chattriggers.ctjs.api.client.GameState${'$'}Event): com.chattriggers.ctjs.api.triggers.Trigger;
       renderEntity(entity: Entity, partialTicks: number, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.RenderEntityTrigger;
       renderBlockEntity(blockEntity: BlockEntity, partialTicks: number, event: CancellableEvent): com.chattriggers.ctjs.api.triggers.RenderBlockEntityTrigger;
       postGuiRender(mouseX: number, mouseY: number, screen: net.minecraft.client.gui.screen.Screen): com.chattriggers.ctjs.api.triggers.Trigger;

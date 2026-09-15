@@ -1,6 +1,7 @@
 package com.chattriggers.ctjs.internal.launch
 
 import com.chattriggers.ctjs.engine.printTraceToConsole
+import com.v5.loader.internal.V5Loader
 import com.llamalad7.mixinextras.MixinExtrasBootstrap
 import java.io.OutputStream
 import java.io.PrintStream
@@ -15,6 +16,7 @@ class CTMixinPlugin : IMixinConfigPlugin {
         MixinExtrasBootstrap.init()
 
         try {
+            V5Loader.init()
             DynamicMixinManager.prepare()
         } catch (e: Throwable) {
             IllegalStateException("Error generating dynamic mixins", e).printTraceToConsole()
@@ -23,7 +25,7 @@ class CTMixinPlugin : IMixinConfigPlugin {
 
     override fun getRefMapperConfig(): String? = null
 
-    override fun shouldApplyMixin(targetClassName: String?, mixinClassName: String?): Boolean = true
+    override fun shouldApplyMixin(targetClassName: String?, mixinClassName: String?) = true
 
     override fun acceptTargets(myTargets: MutableSet<String>?, otherTargets: MutableSet<String>?) {}
 

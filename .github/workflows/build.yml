@@ -8,15 +8,25 @@ on:
       - "src/main/java/**"
       - "src/main/kotlin/**"
       - "src/main/resources/**"
-      - "!src/main/resources/assets/v5/natives/**"
       - "typing-generator/src/**"
+      - "versions/**"
+      - "stonecutter.gradle.kts"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
   pull_request:
     paths:
       - "src/main/java/**"
       - "src/main/kotlin/**"
       - "src/main/resources/**"
-      - "!src/main/resources/assets/v5/natives/**"
       - "typing-generator/src/**"
+      - "versions/**"
+      - "stonecutter.gradle.kts"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
 
 permissions:
   contents: read
@@ -27,7 +37,12 @@ concurrency:
 
 jobs:
   build:
+    name: Build Minecraft ${{ matrix.minecraft }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: [26.1.2, 26.2]
 
     steps:
       - name: Checkout
@@ -50,16 +65,16 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build
-        run: bash ./gradlew --no-daemon build
+        run: bash ./gradlew --no-daemon :${{ matrix.minecraft }}:build -PreleaseBuild
 
       - name: Resolve build artifact
         id: artifact
         shell: bash
         run: |
           set -euo pipefail
-          MC_VERSION="$(sed -nE 's/^minecraft = "([^"]+)"/\1/p' gradle/libs.versions.toml)"
           MOD_VERSION="$(sed -n 's/^mod_version *= *//p' gradle.properties | tr -d '\r')"
-          JAR="build/libs/V5-Offline-${MOD_VERSION}-${MC_VERSION}.jar"
+          MC_VERSION="${{ matrix.minecraft }}"
+          JAR="versions/${MC_VERSION}/build/libs/V5-Offline-${MOD_VERSION}-${MC_VERSION}.jar"
           test -f "$JAR"
           echo "path=$JAR" >> "$GITHUB_OUTPUT"
           echo "name=V5-Offline-${MOD_VERSION}-${MC_VERSION}" >> "$GITHUB_OUTPUT"

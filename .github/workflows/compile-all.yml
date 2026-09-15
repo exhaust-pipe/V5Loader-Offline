@@ -1,47 +1,121 @@
-name: Rebuild JNI
+name: Compile JNI and JVM
 
 on:
   push:
     branches:
       - "**"
     paths:
+      - ".github/workflows/**"
       - "NativeSrc/**"
+      - "src/**"
+      - "typing-generator/src/**"
+      - "**/*.gradle.kts"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: native-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+  detect-native:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    outputs:
+      native_changed: ${{ steps.native.outputs.native_changed }}
+      should_build: ${{ steps.native.outputs.should_build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect native or workflow changes
+        id: native
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "native_changed=true" >> "$GITHUB_OUTPUT"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          HEAD_MSG="$(git log -1 --pretty=%B "$AFTER")"
+
+          if echo "$HEAD_MSG" | grep -q '\[skip-native-auto\]'; then
+            echo "native_changed=false" >> "$GITHUB_OUTPUT"
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            if git rev-parse "${AFTER}^" >/dev/null 2>&1; then
+              BEFORE="${AFTER}^"
+            else
+              echo "native_changed=true" >> "$GITHUB_OUTPUT"
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "Diff range: $BEFORE -> $AFTER"
+
+          CHANGED="$(git diff --name-only "$BEFORE" "$AFTER" --)"
+
+          if echo "$CHANGED" | grep -Eq '^NativeSrc/'; then
+            echo "native_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "native_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+
   linux:
+    needs: detect-native
+    if: ${{ needs['detect-native'].outputs.native_changed == 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/native-linux-builder.yml
 
   macos:
+    needs: detect-native
+    if: ${{ needs['detect-native'].outputs.native_changed == 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/native-macos-builder.yml
 
   windows:
+    needs: detect-native
+    if: ${{ needs['detect-native'].outputs.native_changed == 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/native-windows-builder.yml
 
-  bundle:
+  bundle-natives:
     needs:
+      - detect-native
       - linux
       - macos
       - windows
-    runs-on: ubuntu-24.04
+    if: >-
+      ${{
+        always() &&
+        needs['detect-native'].outputs.native_changed == 'true' &&
+        needs.linux.result == 'success' &&
+        needs.macos.result == 'success' &&
+        needs.windows.result == 'success'
+      }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
       contents: write
-
+    env:
+      BRANCH: ${{ github.ref_name }}
     steps:
-      - name: Checkout source commit
+      - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
@@ -81,42 +155,76 @@ jobs:
           rm -f src/main/resources/assets/v5/V5PathJNI.dylib
           rm -f src/main/resources/assets/v5/V5PathJNI.dll
 
-      - name: Commit updated JNI artifacts
+      - name: Commit bundled natives
         shell: bash
-        env:
-          BRANCH: ${{ github.ref_name }}
-          SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          USER_NAME="$(git log -1 --pretty=%an "${{ github.sha }}")"
+          USER_EMAIL="$(git log -1 --pretty=%ae "${{ github.sha }}")"
+          git config user.name "$USER_NAME"
+          git config user.email "$USER_EMAIL"
 
           git add src/main/resources/assets/v5/natives/
           git add -u src/main/resources/assets/v5/
 
-          if git diff --cached --quiet; then
-            echo "JNI artifacts are already up to date."
-            exit 0
+          if ! git diff --cached --quiet; then
+            git log -1 --pretty=%B "${{ github.sha }}" > .git/JNI_COMMIT_MSG
+            echo "" >> .git/JNI_COMMIT_MSG
+            echo "[skip-native-auto]" >> .git/JNI_COMMIT_MSG
+            git commit -F .git/JNI_COMMIT_MSG
+            rm -f .git/JNI_COMMIT_MSG
+            git fetch origin "$BRANCH" --depth=50
+            git rebase "origin/$BRANCH"
+            git push origin HEAD:"$BRANCH"
           fi
 
-          SOURCE_SHORT="${SOURCE_SHA:0:12}"
-          SOURCE_SUBJECT="$(git log -1 --pretty=%s "$SOURCE_SHA")"
+  resolve-head:
+    needs:
+      - detect-native
+      - bundle-natives
+    if: >-
+      ${{
+        always() &&
+        needs['detect-native'].outputs.should_build == 'true' &&
+        (
+          needs['detect-native'].outputs.native_changed == 'false' ||
+          needs['bundle-natives'].result == 'success'
+        )
+      }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    env:
+      BRANCH: ${{ github.ref_name }}
+    outputs:
+      head_sha: ${{ steps.resolve_sha.outputs.head_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
-          git commit \
-            -m "chore(native): rebuild JNI artifacts for ${SOURCE_SHORT}" \
-            -m "Source-Commit: ${SOURCE_SHA}" \
-            -m "Source-Message: ${SOURCE_SUBJECT}"
-
-          git fetch origin "$BRANCH"
-          REMOTE_SHA="$(git rev-parse "origin/$BRANCH")"
-
-          if [[ "$REMOTE_SHA" != "$SOURCE_SHA" ]]; then
-            if ! git diff --quiet "$SOURCE_SHA" "$REMOTE_SHA" -- NativeSrc/; then
-              echo "::error::NativeSrc changed again while this build was running. Refusing to commit stale JNI artifacts."
-              exit 1
-            fi
-            git rebase "$REMOTE_SHA"
+      - name: Resolve latest branch HEAD SHA
+        id: resolve_sha
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ needs['detect-native'].outputs.native_changed }}" == "true" ]]; then
+            git fetch origin "$BRANCH" --depth=50
+            echo "head_sha=$(git rev-parse "origin/$BRANCH")" >> "$GITHUB_OUTPUT"
+          else
+            echo "head_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           fi
 
-          git push origin HEAD:"$BRANCH"
+  build:
+    needs: resolve-head
+    if: ${{ always() && needs.resolve-head.result == 'success' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build.yml
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    with:
+      sha: ${{ needs.resolve-head.outputs.head_sha }}

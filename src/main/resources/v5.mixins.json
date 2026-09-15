@@ -1,32 +1,12 @@
 {
-    "required": true,
-    "minVersion": "0.8",
-    "package": "com.v5.mixins",
-    "compatibilityLevel": "JAVA_25",
-    "client": [
-        "BlockMixin",
-        "CameraMixin",
-        "ChatComponentMixin",
-        "CrossCollisionBlockMixin",
-        "DrawContextCapture",
-        "EntityRendererMixin",
-        "FirmamentModAnnouncerMixin",
-        "FramerateLimitTrackerMixin",
-        "FrustumMixin",
-        "GameRendererMixin",
-        "GuiGraphicsExtractorMixin",
-        "ItemInHandRendererMixin",
-        "KeyboardHandlerMixin",
-        "MinecraftMixin",
-        "MouseHandlerMixin",
-        "LevelRendererMixin",
-        "SkydiaoClientReceiveHandlerMixin",
-        "VisGraphMixin"
-    ],
-    "mixins": [
-        "ConnectionMixin"
-    ],
-    "injectors": {
-        "defaultRequire": 1
-    }
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.v5.mixins",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "SkydiaoClientReceiveHandlerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

@@ -3,15 +3,7 @@ plugins {
 }
 
 kotlin {
-    kotlin {
-        jvmToolchain(25)
-    }
-}
-
-buildscript {
-    dependencies {
-        classpath(libs.gradle.plugin)
-    }
+    jvmToolchain(21)
 }
 
 repositories {

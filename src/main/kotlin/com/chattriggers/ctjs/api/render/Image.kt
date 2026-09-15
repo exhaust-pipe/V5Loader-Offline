@@ -22,7 +22,6 @@ class Image(var image: BufferedImage?) {
 
     init {
         CTJS.images.add(this)
-
         Client.scheduleTask {
             val source = image ?: return@scheduleTask
             texture = source.toNativeTexture()
@@ -30,56 +29,39 @@ class Image(var image: BufferedImage?) {
     }
 
     fun getTextureWidth(): Int = textureWidth
-
     fun getTextureHeight(): Int = textureHeight
-
     fun getTexture(): DynamicTexture? = texture?.texture
 
     internal fun getIdOrRegister(): Identifier {
         identifier?.let { return it }
-
         val id = Identifier.fromNamespaceAndPath(CTJS.MOD_ID, "image${nextIdentifierIndex++}")
         identifier = id
         val loadedTexture = texture
-
         if (loadedTexture != null) {
             Client.getMinecraft().textureManager.register(id, loadedTexture.texture)
         } else {
-            Client.scheduleTask {
-                texture?.let { Client.getMinecraft().textureManager.register(id, it.texture) }
-            }
+            Client.scheduleTask { texture?.let { Client.getMinecraft().textureManager.register(id, it.texture) } }
         }
-
         return id
     }
 
-    /**
-     * Clears the image from GPU memory and removes its references CT side
-     * that way it can be garbage collected if not referenced in js code.
-     */
     fun destroy() {
         texture?.texture?.close()
         texture?.buffer?.let(MemoryUtil::memFree)
         texture = null
         image = null
+        CTJS.images.remove(this)
     }
 
     @JvmOverloads
-    fun draw(
-        x: Float,
-        y: Float,
-        width: Float? = null,
-        height: Float? = null,
-    ) = apply {
+    fun draw(x: Float, y: Float, width: Float? = null, height: Float? = null) = apply {
         val (drawWidth, drawHeight) = when {
             width == null && height == null -> textureWidth.toFloat() to textureHeight.toFloat()
             width == null -> requireNotNull(height) / aspectRatio to height
             height == null -> width to width * aspectRatio
             else -> width to height
         }
-
-        if (texture != null)
-            Renderer.drawImage(this, x, y, drawWidth, drawHeight)
+        if (texture != null) Render2D.drawImage(this, x, y, drawWidth, drawHeight)
     }
 
     private data class Texture(val texture: DynamicTexture, val buffer: ByteBuffer)
@@ -87,49 +69,14 @@ class Image(var image: BufferedImage?) {
     companion object {
         private var nextIdentifierIndex = 0
 
-        /**
-         * Create an image object from a java.io.File object. Throws an exception
-         * if the file cannot be found.
-         */
-        @JvmStatic
-        fun fromFile(file: File) = Image(ImageIO.read(file))
+        @JvmStatic fun fromFile(file: File) = Image(ImageIO.read(file))
+        @JvmStatic fun fromFile(file: String) = Image(ImageIO.read(File(file)))
+        @JvmStatic fun fromAsset(name: String) = Image(ImageIO.read(File(CTJS.assetsDir, name)))
 
-        /**
-         * Create an image object from a file path. Throws an exception
-         * if the file cannot be found.
-         */
-        @JvmStatic
-        fun fromFile(file: String) = Image(ImageIO.read(File(file)))
-
-        /**
-         * Create an image object from a file path, relative to the assets directory.
-         * Throws an exception if the file cannot be found.
-         */
-        @JvmStatic
-        fun fromAsset(name: String) = Image(ImageIO.read(File(CTJS.assetsDir, name)))
-
-        /**
-         * Creates an image object from a URL. Throws an exception if an image
-         * cannot be created from the URL. Will cache the image in the assets
-         */
         @JvmStatic
         @JvmOverloads
         fun fromUrl(url: String, cachedImageName: String? = null): Image {
-            if (cachedImageName == null)
-                return Image(getImageFromUrl(url))
-
-            val resourceFile = File(CTJS.assetsDir, cachedImageName)
-
-            if (resourceFile.exists())
-                return Image(ImageIO.read(resourceFile))
-
-            val image = getImageFromUrl(url)
-            ImageIO.write(image, "png", resourceFile)
-            return Image(image)
-        }
-
-        private fun getImageFromUrl(url: String): BufferedImage {
-            throw UnsupportedOperationException("Use a local image file in V5 Offline")
+            throw UnsupportedOperationException("Remote images are disabled in V5 Offline; use a local image file")
         }
 
         private fun BufferedImage.toNativeTexture(): Texture {
@@ -138,7 +85,9 @@ class Image(var image: BufferedImage?) {
                 val buffer = MemoryUtil.memAlloc(it.size())
                 buffer.put(it.toByteArray())
                 buffer.rewind()
-                Texture(DynamicTexture( { "ct:${UUID.randomUUID()}" }, NativeImage.read(buffer)), buffer)
+                NativeImage.read(buffer).use { image ->
+                    Texture(DynamicTexture({ "ct:${UUID.randomUUID()}" }, image), buffer)
+                }
             }
         }
     }
