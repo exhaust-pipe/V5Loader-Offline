@@ -30,6 +30,9 @@ set_target_properties(V5PathJNI PROPERTIES
 )
 
 if (MSVC)
+  # Keep the Windows JNI self-contained for offline installs; do not require
+  # the Visual C++ Redistributable on the target machine.
+  set_property(TARGET V5PathJNI PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   target_compile_options(V5PathJNI PRIVATE /O2 /EHsc)
 else()
   target_compile_options(V5PathJNI PRIVATE -O3)
