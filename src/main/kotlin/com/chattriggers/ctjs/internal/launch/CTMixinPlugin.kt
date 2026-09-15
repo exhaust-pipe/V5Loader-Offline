@@ -1,7 +1,6 @@
 package com.chattriggers.ctjs.internal.launch
 
 import com.chattriggers.ctjs.engine.printTraceToConsole
-import com.v5.loader.internal.V5Loader
 import com.llamalad7.mixinextras.MixinExtrasBootstrap
 import java.io.OutputStream
 import java.io.PrintStream
@@ -16,7 +15,6 @@ class CTMixinPlugin : IMixinConfigPlugin {
         MixinExtrasBootstrap.init()
 
         try {
-            V5Loader.init()
             DynamicMixinManager.prepare()
         } catch (e: Throwable) {
             IllegalStateException("Error generating dynamic mixins", e).printTraceToConsole()
