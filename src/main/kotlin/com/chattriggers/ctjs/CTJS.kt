@@ -66,8 +66,11 @@ class CTJS : ClientModInitializer {
             ignoreUnknownKeys = true
         }
 
-        @JvmStatic
-        fun unload(asCommand: Boolean = true) {
+        private data class Resources(val images: List<Image>, val sounds: List<Sound>)
+
+        private fun teardown(asCommand: Boolean): Resources {
+            val resources = Resources(images.toList(), sounds.toList())
+
             Client.unpressKeys()
             TriggerType.WORLD_UNLOAD.triggerAll()
             TriggerType.GAME_UNLOAD.triggerAll()
@@ -82,14 +85,21 @@ class CTJS : ClientModInitializer {
             Render2D.clearCallbacks()
 
             if (Config.clearConsoleOnLoad) Console.clear()
-
-            Client.scheduleTask {
-                Render2D.destroy()
-                images.toList().forEach(Image::destroy)
-                sounds.toList().forEach(Sound::destroy)
-            }
-
             if (asCommand) ChatLib.chat("&7Unloaded ChatTriggers")
+
+            return resources
+        }
+
+        private fun destroyResources(resources: Resources) {
+            Render2D.destroy()
+            resources.images.forEach(Image::destroy)
+            resources.sounds.forEach(Sound::destroy)
+        }
+
+        @JvmStatic
+        fun unload(asCommand: Boolean = true) {
+            val resources = teardown(asCommand)
+            Client.scheduleTask { destroyResources(resources) }
         }
 
         @JvmStatic
@@ -99,21 +109,26 @@ class CTJS : ClientModInitializer {
             isReloading = true
 
             Client.getMinecraft().options.save()
-            unload(asCommand = false)
+            val resources = teardown(asCommand = false)
             if (asCommand) ChatLib.chat("&cReloading ChatTriggers...")
 
-            thread {
-                try {
-                    ModuleManager.setup()
-                    Client.getMinecraft().options.load()
-                    isLoaded = true
-                    ModuleManager.entryPass()
+            // Complete destruction of the previous generation on the client thread before
+            // the replacement modules are allowed to allocate images, sounds or Skija caches.
+            Client.scheduleTask {
+                destroyResources(resources)
+                thread(name = "CTJS reload") {
+                    try {
+                        ModuleManager.setup()
+                        Client.getMinecraft().options.load()
+                        isLoaded = true
+                        ModuleManager.entryPass()
 
-                    if (asCommand) ChatLib.chat("&aDone reloading!")
-                    TriggerType.GAME_LOAD.triggerAll()
-                    if (World.isLoaded()) TriggerType.WORLD_LOAD.triggerAll()
-                } finally {
-                    isReloading = false
+                        if (asCommand) ChatLib.chat("&aDone reloading!")
+                        TriggerType.GAME_LOAD.triggerAll()
+                        if (World.isLoaded()) TriggerType.WORLD_LOAD.triggerAll()
+                    } finally {
+                        isReloading = false
+                    }
                 }
             }
         }
