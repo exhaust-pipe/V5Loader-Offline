@@ -157,9 +157,11 @@ object Client {
      * This acts just like clicking the "Disconnect" or "Save and quit to title" button.
      */
     @JvmStatic
-    fun disconnect() {
+    @JvmOverloads
+    fun disconnect(reason: String = "Disconnected by script", source: String = "script") {
         scheduleTask {
-            World.toMC()?.disconnect(Component.empty())
+            GameState.markActive("script", source)
+            World.toMC()?.disconnect(Component.literal(reason))
 
             getMinecraft().setScreenCompat(when {
                 getMinecraft().isLocalServer -> TitleScreen()
@@ -175,16 +177,18 @@ object Client {
      */
     @JvmStatic
     @JvmOverloads
-    fun connect(ip: String, port: Int = 25565) {
+    fun connect(ip: String, port: Int = 25565, source: String = "script") {
         scheduleTask {
-            ConnectScreen.startConnecting(
-                JoinMultiplayerScreen(TitleScreen()),
-                getMinecraft(),
-                ServerAddress(ip, port),
-                ServerData("Server", ip, ServerData.Type.OTHER),
-                false,
-                null,
-            )
+            GameState.withConnectingSource(source) {
+                ConnectScreen.startConnecting(
+                    JoinMultiplayerScreen(TitleScreen()),
+                    getMinecraft(),
+                    ServerAddress(ip, port),
+                    ServerData("Server", if (port == 25565) ip else "$ip:$port", ServerData.Type.OTHER),
+                    false,
+                    null,
+                )
+            }
         }
     }
 
@@ -203,7 +207,7 @@ object Client {
     /**
      * Gets the Minecraft ChatHud object for the chat gui
      *
-     * @return The GuiNewChat object for the chat gui
+     * @return The GuiNewChat object
      */
     @JvmStatic
     fun getChatGui(): ChatComponent? = getMinecraft().gui.chatCompat
