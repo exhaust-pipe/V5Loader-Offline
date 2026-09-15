@@ -23,9 +23,9 @@ class WrappedThread(private val task: Runnable) {
                 }
             } catch (e: InterruptedException) {
                 // Script reload invalidates sleeping work from the previous generation.
-                if (CTJS.isScriptGenerationCurrent(generation)) e.printStackTraceToConsole()
+                if (CTJS.isScriptGenerationCurrent(generation)) e.printTraceToConsole()
             } catch (e: Throwable) {
-                if (CTJS.isScriptGenerationCurrent(generation)) e.printStackTraceToConsole()
+                if (CTJS.isScriptGenerationCurrent(generation)) e.printTraceToConsole()
             } finally {
                 activeGeneration.remove()
             }
