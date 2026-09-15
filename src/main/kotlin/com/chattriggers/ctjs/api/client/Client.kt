@@ -149,7 +149,12 @@ object Client {
     @JvmStatic
     @JvmOverloads
     fun scheduleTask(delay: Int = 0, callback: () -> Unit) {
-        ClientListener.addTask(delay, callback)
+        // Script-created tasks must not cross a /ct load boundary. Internal teardown tasks
+        // are scheduled while CTJS is unloaded and intentionally remain unguarded.
+        val generation = if (CTJS.isLoaded) CTJS.scriptGeneration else null
+        ClientListener.addTask(delay) {
+            if (generation == null || CTJS.isScriptGenerationCurrent(generation)) callback()
+        }
     }
 
     /**
