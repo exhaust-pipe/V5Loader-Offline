@@ -16,10 +16,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
-import java.net.URI
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.imageio.ImageIO
 import javax.imageio.metadata.IIOMetadataNode
@@ -32,10 +30,6 @@ open class GuiRendererBackend {
     private val preCallbacks = CopyOnWriteArrayList<Runnable>()
     private val images = ConcurrentHashMap<String, CachedImage>()
     private val gifs = HashMap<String, CachedGif>()
-    private val urlImages = HashMap<String, SkijaImage>()
-    private val pendingUrls = ConcurrentHashMap.newKeySet<String>()
-    private val failedUrls = ConcurrentHashMap.newKeySet<String>()
-    private val downloadedUrls = ConcurrentLinkedQueue<Pair<String, ByteArray?>>()
     private val typefaces = HashMap<Font, Typeface>()
     private val fonts = HashMap<FontKey, io.github.humbleui.skija.Font>()
     private val textLines = object : LinkedHashMap<TextKey, TextLine>(TEXT_CACHE_SIZE, 0.75f, true) {
@@ -97,7 +91,6 @@ open class GuiRendererBackend {
         alphaStack.clear()
         scissorDepths.clear()
         saveDepth = 0
-        processDownloads()
     }
 
     internal fun endSkijaFrame() {
@@ -259,7 +252,7 @@ open class GuiRendererBackend {
         FontKey(font ?: defaultFont, size).let { textLine(text, it, skijaFont(it)).width }
 
     fun loadImage(path: String): String {
-        if (path.isUrl()) return path
+        if (path.isUrl()) throw UnsupportedOperationException("Remote images are disabled in V5 Offline; use a local image file")
         synchronized(images) {
             images[path]?.let { it.refs++; return path }
             images[path] = CachedImage(createImage(readImage(path), path))
@@ -268,13 +261,7 @@ open class GuiRendererBackend {
     }
 
     fun unloadImage(path: String) {
-        if (path.isUrl()) {
-            urlImages.remove(path)?.close()
-            pendingUrls -= path
-            failedUrls -= path
-            downloadedUrls.removeIf { it.first == path }
-            return
-        }
+        if (path.isUrl()) return
         synchronized(images) {
             images[path]?.let { if (--it.refs <= 0) { it.image.close(); images.remove(path) } }
         }
@@ -284,24 +271,13 @@ open class GuiRendererBackend {
 
     @JvmOverloads
     fun drawImage(path: String, x: Float, y: Float, width: Float, height: Float, radius: Float = 0f, imageAlpha: Float = 1f) {
-        if (path.isUrl()) return drawImageFromUrl(path, x, y, width, height, radius, imageAlpha)
+        if (path.isUrl()) return
         val image = images[path] ?: runCatching { loadImage(path) }.getOrNull()?.let(images::get) ?: return
         drawImage(image.image, x, y, width, height, radius, imageAlpha)
     }
 
     @JvmOverloads
-    fun drawImageFromUrl(url: String, x: Float, y: Float, width: Float, height: Float, radius: Float = 0f, imageAlpha: Float = 1f) {
-        if (url == "none" || url in failedUrls) return
-        urlImages[url]?.let { return drawImage(it, x, y, width, height, radius, imageAlpha) }
-        if (pendingUrls.add(url)) Thread({
-            val bytes = runCatching {
-                URI(url).toURL().openConnection().apply {
-                    connectTimeout = 5000; readTimeout = 5000; setRequestProperty("User-Agent", "V5-Loader")
-                }.getInputStream().use { it.readBytes() }
-            }.getOrNull()
-            downloadedUrls += url to bytes
-        }, "V5 image ${url.hashCode()}").apply { isDaemon = true }.start()
-    }
+    fun drawImageFromUrl(url: String, x: Float, y: Float, width: Float, height: Float, radius: Float = 0f, imageAlpha: Float = 1f) = Unit
 
     fun loadGif(path: String): GifData? {
         synchronized(gifs) {
@@ -325,10 +301,9 @@ open class GuiRendererBackend {
     fun clearImageCache() {
         synchronized(images) { images.values.forEach { it.image.close() }; images.clear() }
         synchronized(gifs) { gifs.values.flatMap { it.frames }.forEach(SkijaImage::close); gifs.clear() }
-        urlImages.values.forEach(SkijaImage::close); urlImages.clear(); pendingUrls.clear(); failedUrls.clear(); downloadedUrls.clear()
     }
 
-    fun getCacheStats() = "Images: ${images.size}, GIFs: ${gifs.size}, URLs: ${urlImages.size}"
+    fun getCacheStats() = "Images: ${images.size}, GIFs: ${gifs.size}"
 
     fun destroy() {
         clearImageCache()
@@ -368,15 +343,6 @@ open class GuiRendererBackend {
 
     private fun checkerShader(size: Float) = checkerShaders.getOrPut(size) {
         checkerImage().makeShader(FilterTileMode.REPEAT, FilterTileMode.REPEAT, SamplingMode.DEFAULT, Matrix33.makeScale(size))
-    }
-
-    private fun processDownloads() {
-        repeat(5) {
-            val (url, bytes) = downloadedUrls.poll() ?: return
-            if (!pendingUrls.remove(url)) return@repeat
-            if (bytes == null) failedUrls += url else runCatching { createImage(bytes, url) }
-                .onSuccess { urlImages[url] = it }.onFailure { failedUrls += url }
-        }
     }
 
     private fun createImage(bytes: ByteArray, name: String): SkijaImage {
