@@ -12,6 +12,7 @@ import com.chattriggers.ctjs.api.render.skia.createSkijaPIP
 import com.chattriggers.ctjs.api.triggers.TriggerType
 import com.chattriggers.ctjs.api.world.Scoreboard
 import com.chattriggers.ctjs.api.world.World
+import com.chattriggers.ctjs.api.world.pathfinding.PathManager
 import com.chattriggers.ctjs.engine.Console
 import com.chattriggers.ctjs.engine.Register
 import com.chattriggers.ctjs.internal.commands.StaticCommand
@@ -54,6 +55,15 @@ class CTJS : ClientModInitializer {
         var isLoaded = true
             private set
 
+        @JvmStatic
+        @Volatile
+        var scriptGeneration = 1L
+            private set
+
+        @JvmStatic
+        fun isScriptGenerationCurrent(generation: Long): Boolean =
+            isLoaded && generation == scriptGeneration
+
         @Volatile
         private var isReloading = false
 
@@ -68,6 +78,27 @@ class CTJS : ClientModInitializer {
 
         private data class Resources(val images: List<Image>, val sounds: List<Sound>)
 
+        private fun resetScriptRuntimeState() {
+            Client.isFreecam = false
+            Client.isFreelook = false
+            Client.isUngrabbed = false
+            Client.isInputLocked = false
+            Client.isMacroEnabled = false
+            Client.isForcePerspective = false
+            Client.limitFps = false
+            Client.muteGame = false
+            Client.renderLimiter = Client.RenderLimiter.OFF
+            Client.clearCameraRotation()
+            Client.cameraPosition = null
+            Client.freelookDistance = 4.0
+            Client.spectatedEntity = null
+            Client.setNameProcessor(null)
+            Client.setNameReplacement(null, null)
+
+            PathManager.cancelSearch()
+            PathManager.clear()
+        }
+
         private fun teardown(asCommand: Boolean): Resources {
             val resources = Resources(images.toList(), sounds.toList())
 
@@ -76,6 +107,10 @@ class CTJS : ClientModInitializer {
             TriggerType.GAME_UNLOAD.triggerAll()
             Scoreboard.clearCustom()
             isLoaded = false
+
+            // Invalidate async work from the previous script generation before loading replacements.
+            scriptGeneration++
+            resetScriptRuntimeState()
 
             ModuleManager.teardown()
             KeyBind.clearKeyBinds()
