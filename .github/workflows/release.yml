@@ -72,8 +72,12 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-assets/*.jar --clobber
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/*.jar --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" release-assets/*.jar --verify-tag --title "$TAG" --generate-notes
+            gh release create "$TAG" release-assets/*.jar \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "$TAG" \
+              --generate-notes
           fi
