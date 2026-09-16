@@ -2,19 +2,18 @@
 
 [English](README.md) | 简体中文
 
-这是一个以离线和隐私为目标的 V5Loader 分支。它移除了 V5 账号／认证、官方后端通信、遥测、自动模块与更新下载、Discord RPC、代理支持等官方联网功能。运行时模块仅从本地加载。配套 V5-Offline 脚本为公开物品／Bazaar 数据保留了 Hypixel 公共 API 路径。
+这是一个以离线和隐私为目标的 V5Loader 分支。它移除了所有V5官方的联网功能，使mod仅从本地加载运行。同时增加了一些新功能与修复。
 
-本 Loader 应与 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline) 配套使用。脚本需要手动安装，Loader 不会替你下载或更新。
+该加载器需要加载配套的脚本 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline) 才能正常使用。因为移除了联网功能，脚本需要你手动[安装](#安装)，Loader 不会替你下载或更新。
 
-## 运行时隐私模型
+## 离线更新
 
 - 不需要 V5 账号，也不进行官方认证。
 - 不发送遥测或向 V5 后端上报数据。
-- 不自动下载模块、脚本、辅助程序或更新。
-- Offline 兼容层会阻止远程图片加载。
-- 脚本输出仅保存在本地 `logs/latest.log`，不使用上游可执行 JS 的 socket Console。
-- Skija 渲染器所需的平台运行库在构建时打入 Mod，首次启动不会再从 Maven 下载 Skija。
-- 配套 Offline 脚本使用的 Hypixel 公共数据访问会继续保留。
+- 不自动下载更新。
+- 阻止远程图片加载。
+- 脚本输出仅保存在本地 `logs/latest.log`，不使用原来可执行 JS 的 socket Console。
+- gui渲染回退到旧版本的 NanoVG 进行，不下载新版本使用的 Skija
 
 ## 支持的 Minecraft 版本
 
@@ -28,10 +27,9 @@ Fabric API 版本由 Stonecutter 根据 Minecraft 版本自动选择。
 
 ## 安装
 
-1. 安装对应 Minecraft 版本的 `V5-Offline-<version>-<minecraft>.jar`、Fabric API 和 Fabric Language Kotlin。
-2. 手动下载匹配的 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) 脚本包。
-3. 解压为 `config/ChatTriggers/modules/V5/`。
-4. 不要同时安装其他版本的 V5 Loader 或 ChatTriggers。
+1. 安装对应版本的mod和上述依赖
+2. 将配套 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) 发布的zip文件作为一个**文件夹**完整解压到 `config/ChatTriggers/modules/`，并确认该文件夹名称为V5，使结构变为：`config/ChatTriggers/modules/V5`
+3. 确认目录结构如下，且没有同时安装其他版本的 V5 Loader 或 ChatTriggers：
 
 目录结构应类似：
 

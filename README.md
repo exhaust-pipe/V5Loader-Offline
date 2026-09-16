@@ -2,19 +2,18 @@
 
 English | [简体中文](README_zh.md)
 
-An offline-focused fork of V5Loader. It removes V5 account/authentication, vendor backend communication, telemetry, automatic module/update downloads, Discord RPC, proxy support, and other vendor-network features. Runtime module loading is local-only. The retained public Hypixel API path is used only by the matching V5-Offline scripts for public market/item data.
+An offline-focused fork of V5Loader. It removes all official V5 online features, allowing the mod to run exclusively from local sources. Additionally, it adds some new features and bug fixes.
 
-This loader is intended to be used with [V5-Offline](https://github.com/exhaust-pipe/V5-Offline). Install the scripts manually; the loader does not download or update them for you.
+This loader is intended to be used with [V5-Offline](https://github.com/exhaust-pipe/V5-Offline). Since the online features has been removed, you need to [install the scripts manually](#Installation); the loader does not download or update them for you.
 
-## Runtime privacy model
+## offline update
 
 - No V5 account or vendor authentication.
 - No telemetry or vendor data reporting.
-- No automatic module, script, helper, or update downloads.
-- Remote image loading is blocked by the Offline compatibility layer.
+- No automatic update downloads.
+- Remote image loading is blocked.
 - Script output stays local in `logs/latest.log`; the upstream socket/eval console is not used.
-- The Skija renderer is packaged with its supported platform runtimes at build time, so first launch does not need to download Skija from Maven.
-- Public Hypixel data access used by the Offline scripts is intentionally retained.
+- GUI rendering has fallen back to the NanoVG, skipping the download of the newer Skija-based version.
 
 ## Supported Minecraft versions
 
@@ -28,10 +27,9 @@ Fabric API is selected per Minecraft version through Stonecutter.
 
 ## Installation
 
-1. Install the matching `V5-Offline-<version>-<minecraft>.jar`, Fabric API, and Fabric Language Kotlin.
-2. Download the matching [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) script package manually.
-3. Extract it as `config/ChatTriggers/modules/V5/`.
-4. Do not install another V5 Loader or ChatTriggers build at the same time.
+1. Install the mod and the dependencies listed above.
+2. Extract the zip file released with [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) as a **folder** directly into `config/ChatTriggers/modules/`. Ensure the folder is named `V5`, resulting in the following structure: `config/ChatTriggers/modules/V5`.
+3. Confirm that the directory structure matches the following and that no other version of V5 Loader or ChatTriggers is installed:
 
 Expected layout:
 
