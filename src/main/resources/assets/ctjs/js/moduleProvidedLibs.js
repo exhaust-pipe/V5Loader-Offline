@@ -84,7 +84,7 @@
         easeOut((start >> 16) & 0xFF, (finish >> 16) & 0xFF, speed, jump),
         easeOut((start >> 8) & 0xFF, (finish >> 8) & 0xFF, speed, jump),
         easeOut(start & 0xFF, finish & 0xFF, speed, jump),
-        easeOut((start >> 24) & 0xFF, finish >> 24) & 0xFF, speed, jump)
+        easeOut((start >> 24) & 0xFF, (finish >> 24) & 0xFF, speed, jump)
     );
 
     Number.prototype.easeColor = function (to, speed, jump) {
