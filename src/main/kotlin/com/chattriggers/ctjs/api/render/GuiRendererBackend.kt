@@ -1,6 +1,7 @@
 package com.chattriggers.ctjs.api.render
 
 import net.minecraft.client.Minecraft
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -11,6 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 open class GuiRendererBackend {
     private val callbacks = CopyOnWriteArrayList<Runnable>()
     private val preCallbacks = CopyOnWriteArrayList<Runnable>()
+    private val deferredRenderWork = ConcurrentLinkedQueue<Runnable>()
     private var backendDrawing = false
 
     @JvmField
@@ -35,6 +37,13 @@ open class GuiRendererBackend {
     fun runDrawables() = runFrame(callbacks)
 
     private fun runFrame(list: List<Runnable>) {
+        // GuiRenderer invokes this on Minecraft's render thread. Drain GL/NanoVG cleanup queued
+        // by the CTJS loader thread before deciding whether there is anything to draw.
+        while (true) {
+            val work = deferredRenderWork.poll() ?: break
+            try { work.run() } catch (error: Exception) { error.printStackTrace() }
+        }
+
         if (list.isEmpty()) return
         val window = Minecraft.getInstance().window
         backendDrawing = true
@@ -121,21 +130,51 @@ open class GuiRendererBackend {
 
     @JvmOverloads
     fun textWidth(text: String, size: Float, font: Font? = defaultFont): Float {
-        // Module construction happens on the CTJS loader thread, which has no current GL
-        // context. NanoVG font measurement must therefore only run inside our GUI render pass.
+        // Module construction happens on the CTJS loader thread. Neither NanoVG nor Minecraft's
+        // Font.width() is safe there: Minecraft may lazily bake/upload glyphs and touch RenderSystem.
         if (backendDrawing && NVGRenderer.isDrawing()) return NVGRenderer.textWidth(text, size, font)
+        return estimateTextWidth(text, size)
+    }
 
-        // The exact NanoVG metrics are not available until the first render frame. Minecraft's
-        // font metrics are a stable, GL-free approximation for initial GUI layout; later layout
-        // work performed during rendering uses the exact NanoVG font metrics above.
-        return Minecraft.getInstance().font.width(text).toFloat() * (size / 9f)
+    /**
+     * Pure CPU approximation used only before the first GUI render pass. The exact NanoVG metrics
+     * are used while rendering. Keeping this deliberately simple is preferable to touching any
+     * Minecraft font/glyph API from the CTJS loader thread.
+     */
+    private fun estimateTextWidth(text: String, size: Float): Float {
+        var units = 0f
+        var skipFormattingCode = false
+        for (char in text) {
+            if (skipFormattingCode) {
+                skipFormattingCode = false
+                continue
+            }
+            if (char == '\u00a7') {
+                skipFormattingCode = true
+                continue
+            }
+
+            units += when {
+                char == ' ' -> 0.33f
+                char in "ilI.,'`:;!|" -> 0.28f
+                char in "mwMW@#%&" -> 0.82f
+                char.code >= 0x2E80 -> 1.0f
+                char.isUpperCase() -> 0.62f
+                char.isDigit() -> 0.56f
+                else -> 0.54f
+            }
+        }
+        return units * size.coerceAtLeast(0f)
     }
 
     // Loading script modules must not allocate OpenGL/NanoVG textures. drawImage() already
     // performs a lazy load while a NanoVG frame is active, so keep loadImage() as a handle-only
     // compatibility call.
     fun loadImage(path: String) = path
-    fun unloadImage(path: String) = NVGRenderer.unloadImage(path)
+
+    // Resource destruction can call nvgDelete* and must therefore run on the render thread too.
+    // Queue cleanup requested by /ct load or other script-loader paths for the next render hook.
+    fun unloadImage(path: String) { deferredRenderWork.add(Runnable { NVGRenderer.unloadImage(path) }) }
     fun isImageLoaded(path: String) = NVGRenderer.isImageLoaded(path)
 
     @JvmOverloads
@@ -147,13 +186,13 @@ open class GuiRendererBackend {
         NVGRenderer.drawImageFromUrl(url, x, y, width, height, radius, imageAlpha)
 
     fun loadGif(path: String): GifData? = NVGRenderer.loadGif(path)?.let { GifData(it.width, it.height, it.frameCount, it.delays) }
-    fun unloadGif(path: String) = NVGRenderer.unloadGif(path)
+    fun unloadGif(path: String) { deferredRenderWork.add(Runnable { NVGRenderer.unloadGif(path) }) }
 
     @JvmOverloads
     fun drawGif(path: String, x: Float, y: Float, width: Float, height: Float, frameIndex: Int, radius: Float = 0f, imageAlpha: Float = 1f) =
         NVGRenderer.drawGif(path, x, y, width, height, frameIndex, radius, imageAlpha)
 
-    fun clearImageCache() = NVGRenderer.clearImageCache()
+    fun clearImageCache() { deferredRenderWork.add(Runnable { NVGRenderer.clearImageCache() }) }
     fun getCacheStats() = NVGRenderer.getCacheStats()
-    fun destroy() = NVGRenderer.destroy()
+    fun destroy() { deferredRenderWork.add(Runnable { NVGRenderer.destroy() }) }
 }
