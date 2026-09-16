@@ -32,10 +32,7 @@ jobs:
     uses: ./.github/workflows/native-windows-builder.yml
 
   bundle:
-    needs:
-      - linux
-      - macos
-      - windows
+    needs: [linux, macos, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -68,18 +65,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           DEST=src/main/resources/assets/v5/natives
           mkdir -p "$DEST/linux/x86_64" "$DEST/macos/arm64" "$DEST/macos/x86_64" "$DEST/windows/x86_64"
-
           cp artifact/linux/x86_64/V5PathJNI.so "$DEST/linux/x86_64/V5PathJNI.so"
           cp artifact/macos/arm64/V5PathJNI.dylib "$DEST/macos/arm64/V5PathJNI.dylib"
           cp artifact/macos/x86_64/V5PathJNI.dylib "$DEST/macos/x86_64/V5PathJNI.dylib"
           cp artifact/windows/x86_64/V5PathJNI.dll "$DEST/windows/x86_64/V5PathJNI.dll"
-
-          rm -f src/main/resources/assets/v5/V5PathJNI.so
-          rm -f src/main/resources/assets/v5/V5PathJNI.dylib
-          rm -f src/main/resources/assets/v5/V5PathJNI.dll
 
       - name: Commit updated JNI artifacts
         shell: bash
@@ -88,29 +79,20 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add src/main/resources/assets/v5/natives/
-          git add -u src/main/resources/assets/v5/
-
           if git diff --cached --quiet; then
             echo "JNI artifacts are already up to date."
             exit 0
           fi
-
           SOURCE_SHORT="${SOURCE_SHA:0:12}"
           SOURCE_SUBJECT="$(git log -1 --pretty=%s "$SOURCE_SHA")"
-
-          git commit \
-            -m "chore(native): rebuild JNI artifacts for ${SOURCE_SHORT}" \
+          git commit -m "chore(native): rebuild JNI artifacts for ${SOURCE_SHORT}" \
             -m "Source-Commit: ${SOURCE_SHA}" \
             -m "Source-Message: ${SOURCE_SUBJECT}"
-
           git fetch origin "$BRANCH"
           REMOTE_SHA="$(git rev-parse "origin/$BRANCH")"
-
           if [[ "$REMOTE_SHA" != "$SOURCE_SHA" ]]; then
             if ! git diff --quiet "$SOURCE_SHA" "$REMOTE_SHA" -- NativeSrc/; then
               echo "::error::NativeSrc changed again while this build was running. Refusing to commit stale JNI artifacts."
@@ -118,5 +100,4 @@ jobs:
             fi
             git rebase "$REMOTE_SHA"
           fi
-
           git push origin HEAD:"$BRANCH"

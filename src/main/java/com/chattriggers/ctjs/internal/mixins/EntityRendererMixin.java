@@ -1,6 +1,6 @@
-package com.v5.mixins;
+package com.chattriggers.ctjs.internal.mixins;
 
-import com.v5.storage.ProfileHiderProcessor;
+import com.chattriggers.ctjs.api.client.Client;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,7 +17,7 @@ public class EntityRendererMixin {
             return;
         }
 
-        Component updated = ProfileHiderProcessor.process(original);
+        Component updated = Client.processName(original);
         if (updated != original) {
             cir.setReturnValue(updated);
         }

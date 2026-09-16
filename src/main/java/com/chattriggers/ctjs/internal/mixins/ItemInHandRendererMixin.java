@@ -1,6 +1,6 @@
-package com.v5.mixins;
+package com.chattriggers.ctjs.internal.mixins;
 
-import com.v5.storage.V5MixinStorage;
+import com.chattriggers.ctjs.api.client.Client;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.world.InteractionHand;
@@ -33,7 +33,7 @@ public class ItemInHandRendererMixin {
     }
 
     @Redirect(
-            method = "renderHandsWithItems",
+            method = {"renderHandsWithItems", "submitHandsWithItems"},
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/player/LocalPlayer;getAttackAnim(F)F"))
@@ -43,7 +43,7 @@ public class ItemInHandRendererMixin {
     }
 
     @Redirect(
-            method = "renderHandsWithItems",
+            method = {"renderHandsWithItems", "submitHandsWithItems"},
             at = @At(
                     value = "FIELD",
                     target = "Lnet/minecraft/client/player/LocalPlayer;swingingArm:Lnet/minecraft/world/InteractionHand;"))
@@ -53,7 +53,6 @@ public class ItemInHandRendererMixin {
     }
 
     private LivingEntity v5$getSpectatedEntity() {
-        Object target = V5MixinStorage.get("freecamSpectatedEntity", null);
-        return target instanceof LivingEntity entity ? entity : null;
+        return Client.getSpectatedEntity();
     }
 }

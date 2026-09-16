@@ -2,36 +2,43 @@
 
 [English](README.md) | 简体中文
 
-V5Loader的离线版本，删除了所有第三方联网内容，不需要账号，不下载、更新或替换 Mod、脚本和辅助程序，不上传任何数据。
-该mod需要加载同样修改过的 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline) 才能使用，由于移除了自动下载功能，你需要手动下载该仓库的内容，详见 [安装](#安装)
+这是一个以离线和隐私为目标的 V5Loader 分支。它移除了 V5 账号／认证、官方后端通信、遥测、自动模块与更新下载、Discord RPC、代理支持等官方联网功能。运行时模块仅从本地加载。配套 V5-Offline 脚本为公开物品／Bazaar 数据保留了 Hypixel 公共 API 路径。
 
-## 原项目链接
+本 Loader 应与 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline) 配套使用。脚本需要手动安装，Loader 不会替你下载或更新。
 
-- [原项目文档](https://rdbt.top/docs/getting-started)
-- [V5Loader 原仓库](https://github.com/V5-Client/V5Loader)
-- [V5 脚本原仓库](https://github.com/V5-Client/V5)
+## 运行时隐私模型
 
-保留原项目版权与 [GPL-3.0 许可证](LICENSE)。第三方许可见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
+- 不需要 V5 账号，也不进行官方认证。
+- 不发送遥测或向 V5 后端上报数据。
+- 不自动下载模块、脚本、辅助程序或更新。
+- Offline 兼容层会阻止远程图片加载。
+- 脚本输出仅保存在本地 `logs/latest.log`，不使用上游可执行 JS 的 socket Console。
+- Skija 渲染器所需的平台运行库在构建时打入 Mod，首次启动不会再从 Maven 下载 Skija。
+- 配套 Offline 脚本使用的 Hypixel 公共数据访问会继续保留。
 
-## 运行环境
+## 支持的 Minecraft 版本
 
-| 组件                   | 版本                    |
-| ---------------------- | ----------------------- |
-| Minecraft              | 26.1.2                  |
-| Fabric Loader          | >= 0.19.3               |
-| Fabric API             | >= 0.153.0+26.1.2       |
+| 组件 | 版本 |
+| --- | --- |
+| Minecraft | 26.1.2、26.2 |
+| Fabric Loader | >= 0.19.3 |
 | Fabric Language Kotlin | >= 1.13.9+kotlin.2.3.10 |
+
+Fabric API 版本由 Stonecutter 根据 Minecraft 版本自动选择。
 
 ## 安装
 
-1. 安装mod和上述依赖
-2. 将配套 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) 发布的zip文件作为一个**文件夹**完整解压到 `config/ChatTriggers/modules/`，并确认该文件夹名称为V5，使结构变为：`config/ChatTriggers/modules/V5`
-3. 确认目录结构如下，且没有同时安装其他版本的 V5 Loader 或 ChatTriggers：
+1. 安装对应 Minecraft 版本的 `V5-Offline-<version>-<minecraft>.jar`、Fabric API 和 Fabric Language Kotlin。
+2. 手动下载匹配的 [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) 脚本包。
+3. 解压为 `config/ChatTriggers/modules/V5/`。
+4. 不要同时安装其他版本的 V5 Loader 或 ChatTriggers。
+
+目录结构应类似：
 
 ```text
 游戏目录/
 ├─ mods/
-│  ├─ V5-Offline
+│  ├─ V5-Offline-<version>-<minecraft>.jar
 │  ├─ fabric-api
 │  └─ fabric-language-kotlin
 └─ config/ChatTriggers/modules/V5/
@@ -41,73 +48,59 @@ V5Loader的离线版本，删除了所有第三方联网内容，不需要账号
    └─ assets/
 ```
 
-## 使用与更新
+## 使用
 
-- `/v5` 打开界面，或者手动设置快捷键。
-- 更新脚本时手动替换 `config/ChatTriggers/modules/V5/` 中的文件，再执行 `/ct load`。涉及动态 mixin 的修改需要重启游戏。
-- 自定义脚本放入 `config/ChatTriggers/modules/V5Config/UserScripts/`。
-- 日志位于 `logs/latest.log`，`/ct console` 会提示日志位置。
+- `/v5` 打开 V5 界面。
+- `/ct load` 重新加载本地脚本；动态 mixin 变更仍需要重启游戏。
+- 用户脚本放在 `config/ChatTriggers/modules/V5Config/UserScripts/`。
+- 脚本日志写入 `logs/latest.log`；`/ct console` 会提示该日志位置。
+- 配套脚本会把公开物品／Bazaar 数据缓存到 `config/ChatTriggers/modules/V5Config/public-data/`。
 
-物品和 Bazaar 行情来自 官方 api，缓存保存在 `config/ChatTriggers/modules/V5Config/public-data/`
+## 构建
 
-## 从源码构建
+需要 JDK 25、CMake 3.13+，以及对应平台的 C++ 工具链。
 
-当前构建目标为 Minecraft **26.1.2**，JAR 包含 Windows x86_64、Linux x86_64、macOS arm64 和 x86_64 的原生库。26.2 的源码适配另行处理。
+### JVM / Mod 构建
 
-准备 JDK 25、CMake 3.15 或更新版本，以及对应平台的 C++ 编译器；将 `JAVA_HOME` 指向 JDK 25，并确保工具位于当前终端的 `PATH` 中。以下命令均在本仓库根目录执行，构建中间文件位于 `build/`，Gradle 缓存位于 `.gradle/user-home/`，不需要仓库外的辅助脚本或缓存。
-
-### 1. 构建原生库
-
-按当前操作系统执行相应命令。Windows 需要 Visual Studio C++ Build Tools 和 Windows SDK，在 x64 开发者 PowerShell 中运行；以下使用 MSVC，静态链接 C/C++ runtime：
-
-```powershell
-cmake -S NativeSrc -B build/native-windows -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
-cmake --build build/native-windows --config Release --parallel
-New-Item -ItemType Directory -Force src/main/resources/assets/v5/natives/windows/x86_64 | Out-Null
-Copy-Item build/native-windows/Release/V5PathJNI.dll src/main/resources/assets/v5/natives/windows/x86_64/V5PathJNI.dll -Force
-```
-
-Linux x86_64 需要 GCC/G++ 和 Make（或对应的 CMake 构建工具）：
+显式构建目标 Minecraft 版本：
 
 ```bash
-cmake -S NativeSrc -B build/native-linux -DCMAKE_BUILD_TYPE=Release
-cmake --build build/native-linux --config Release --parallel
-mkdir -p src/main/resources/assets/v5/natives/linux/x86_64
-cp build/native-linux/V5PathJNI.so src/main/resources/assets/v5/natives/linux/x86_64/V5PathJNI.so
+./gradlew :26.1.2:build -PreleaseBuild
+./gradlew :26.2:build -PreleaseBuild
 ```
 
-macOS 需要 Xcode Command Line Tools。以下分别生成 Apple Silicon 和 Intel 两种架构的库：
+输出位于 `versions/<minecraft>/build/libs/`，文件名类似：
 
-```bash
-for arch in arm64 x86_64; do
-  cmake -S NativeSrc -B "build/native-macos-$arch" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_OSX_ARCHITECTURES="$arch" \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
-  cmake --build "build/native-macos-$arch" --config Release --parallel
-  mkdir -p "src/main/resources/assets/v5/natives/macos/$arch"
-  cp "build/native-macos-$arch/V5PathJNI.dylib" "src/main/resources/assets/v5/natives/macos/$arch/V5PathJNI.dylib"
-done
+```text
+V5-Offline-5.2.0-offline-26.1.2.jar
+V5-Offline-5.2.0-offline-26.2.jar
 ```
 
-一次本地构建只会替换上述命令生成的平台库，其他平台使用仓库已有的原生库。若修改了 `NativeSrc/`，应在各平台分别构建，将四个文件汇总到 `src/main/resources/assets/v5/natives/` 的对应目录后再打包。也可以运行下述 GitHub Actions 完成三平台构建和自动回写。
+构建阶段会从 Maven／Gradle 仓库解析依赖，并取得受支持平台的 Skija 运行库；这些运行库随后会随 Mod 一起打包，因此游戏运行时无需再下载。
 
-### 2. 构建 JAR
+### Native Pathfinder JNI
 
-```powershell
-# Windows / PowerShell
-./gradlew.bat --gradle-user-home .gradle/user-home build --no-daemon -PreleaseBuild
-```
+仓库维护四套 Pathfinder 原生库：
 
-```bash
-# Linux / macOS
-bash ./gradlew --gradle-user-home .gradle/user-home build --no-daemon -PreleaseBuild
-```
+- Windows x86_64
+- Linux x86_64
+- macOS arm64
+- macOS x86_64
 
-结果为 `build/libs/V5-Offline-26.1.2.jar`，包含上述四种平台／架构的原生库。首次构建需要联网下载 Gradle、Minecraft 和 Maven 依赖；同一缓存完整后，可在命令末尾追加 `--offline`。
+Windows 使用静态 MSVC runtime，使 JNI DLL 不依赖目标机器额外安装 Visual C++ Redistributable。
 
-### 3. GitHub Actions
+修改 `NativeSrc/**` 会自动触发 **Rebuild JNI** workflow：三平台构建完成后收集四个原生库，并在内容发生变化时回写到当前源码分支的 `src/main/resources/assets/v5/natives/`。
 
-在自己的 fork 启用 Actions，选择 **Compile JNI and JVM → Run workflow**，即可重建所有平台原生库、自动提交回所选分支，再构建 JAR。向任意分支推送构建相关文件也会触发；仅 JVM 源码或依赖变更时复用已提交的原生库。
+### GitHub Actions
 
-从该次运行的 Artifacts 下载 JAR。`26.1.2` 分支构建成功后还会自动在当前 fork 创建／更新 GitHub Release，使用 `gradle.properties` 的 `mod_version` 加递增的 `-rN` 标签。无需原项目的 Secrets；原生库回写和 Release 发布需要 `contents: write`，分支规则必须允许 Actions 推送。详见 [.github/README.md](.github/README.md)。
+- **Build**：同时构建 Minecraft 26.1.2 和 26.2，并上传 artifacts。
+- **Rebuild JNI**：`NativeSrc/**` 发生变化时自动运行，也支持手动触发。
+- **Release**：仅在 push tag 时运行，构建两个 Minecraft 版本，并把两个 JAR 发布到以该 tag 命名的 GitHub Release。
+
+## 原项目
+
+- [V5Loader](https://github.com/V5-Client/V5Loader)
+- [V5 scripts](https://github.com/V5-Client/V5)
+- [原项目文档](https://rdbt.top/docs/getting-started)
+
+保留原项目版权与 GPL-3.0 许可证。第三方许可证见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。

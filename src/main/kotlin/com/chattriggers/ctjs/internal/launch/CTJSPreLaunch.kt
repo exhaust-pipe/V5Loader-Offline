@@ -11,7 +11,7 @@ class CTJSPreLaunch : PreLaunchEntrypoint {
         Thread.setDefaultUncaughtExceptionHandler { thread, exception ->
             "Uncaught exception in thread \"${thread.name}\"".printToConsole(LogType.ERROR)
             exception.printTraceToConsole()
-            prevHandler?.uncaughtException(thread, exception)
+            prevHandler.uncaughtException(thread, exception)
         }
 
         try {

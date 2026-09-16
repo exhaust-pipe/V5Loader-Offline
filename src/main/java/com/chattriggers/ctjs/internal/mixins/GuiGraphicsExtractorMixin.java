@@ -1,6 +1,6 @@
-package com.v5.mixins;
+package com.chattriggers.ctjs.internal.mixins;
 
-import com.v5.storage.ProfileHiderProcessor;
+import com.chattriggers.ctjs.api.client.Client;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -18,6 +18,10 @@ public class GuiGraphicsExtractorMixin {
             ordinal = 0,
             argsOnly = true)
     private FormattedCharSequence v5$processText(FormattedCharSequence original) {
+        if (!Client.hasNameProcessor()) {
+            return original;
+        }
+
         MutableComponent component = Component.empty();
         StringBuilder text = new StringBuilder();
         Style[] currentStyle = {null};
@@ -33,6 +37,6 @@ public class GuiGraphicsExtractorMixin {
         if (currentStyle[0] != null) {
             component.append(Component.literal(text.toString()).setStyle(currentStyle[0]));
         }
-        return ProfileHiderProcessor.process(component).getVisualOrderText();
+        return Client.processName(component).getVisualOrderText();
     }
 }

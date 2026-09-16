@@ -1,5 +1,6 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
     alias(libs.plugins.kotlin)
@@ -9,8 +10,6 @@ plugins {
 }
 
 version = property("mod_version").toString()
-val minecraftVersion = libs.versions.minecraft.get()
-val releaseJarName = "V5-Offline-${project.version}-$minecraftVersion.jar"
 
 repositories {
     mavenCentral()
@@ -23,15 +22,18 @@ repositories {
     maven("https://api.modrinth.com/maven")
 }
 
+val minecraftVersion = sc.current.version
+val fabricApiVersion: String = sc.properties["deps.fabric_api"]
+val universalcraftMinecraftVersion = if (minecraftVersion == "26.1.2") "26.1" else minecraftVersion
+
 dependencies {
-    // To change the versions see the gradle/libs.versions.toml
-    minecraft(libs.minecraft)
+    minecraft("com.mojang:minecraft:$minecraftVersion")
     implementation(libs.fabric.loader)
-    implementation(libs.fabric.api)
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
     implementation(libs.fabric.kotlin)
 
     implementation(libs.bundles.included) { include(this) }
-    implementation(libs.universalcraft) {
+    implementation("gg.essential:universalcraft-$universalcraftMinecraftVersion-fabric:${libs.versions.universalcraft.get()}") {
         include(this)
         exclude("gg.essential", "universalcraft-1.18.1-fabric")
     }
@@ -43,15 +45,13 @@ dependencies {
 
     compileOnly(libs.sponge.mixin)
     ksp(project(":typing-generator"))
-    // NanoVG (with natives)
+
     implementation(libs.lwjgl.nanovg) { include(this) }
     listOf("windows", "linux", "macos", "macos-arm64").forEach {
         implementation(variantOf(libs.lwjgl.nanovg) { classifier("natives-$it") }) {
             include(this)
         }
     }
-
-    // Mixin Extras
     implementation(libs.mixinextras) { include(this) }
 
     compileOnly(libs.hypixel.mod.api)
@@ -59,7 +59,7 @@ dependencies {
 }
 
 loom {
-    accessWidenerPath.set(file("src/main/resources/ctjs.accesswidener"))
+    accessWidenerPath.set(rootProject.file("src/main/resources/ctjs.accesswidener"))
 }
 
 base {
@@ -68,30 +68,31 @@ base {
 
 java {
     withSourcesJar()
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
-    }
-
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    toolchain { languageVersion.set(JavaLanguageVersion.of(25)) }
 }
 
 tasks {
+    register("printVersion") { doLast { println(project.version) } }
+
     processResources {
         val mcVersion = minecraftVersion
         val flkVersion = libs.versions.fabric.kotlin.get()
-        val fapiVersion = libs.versions.fabric.api.get()
+        val fapiVersion = fabricApiVersion
         val loaderVersion = libs.versions.loader.get()
-
-        from("typing-generator/src/main/resources") {
-            include("provided-types.properties")
+        val versionMixins = if (minecraftVersion == "26.1.2") {
+            listOf("GuiHudMixin", "GuiScreenMixin", "LevelRendererMixin")
+        } else {
+            listOf("GuiHudMixin", "GameRendererAccessor", "GuiScreenMixin", "LevelRendererMixin")
         }
+
+        from(rootProject.file("typing-generator/src/main/resources")) { include("provided-types.properties") }
 
         inputs.property("version", project.version)
         inputs.property("minecraft_version", mcVersion)
         inputs.property("fabric_kotlin_version", flkVersion)
         inputs.property("fabric_api_version", fapiVersion)
         inputs.property("loader_version", loaderVersion)
+        inputs.property("version_mixins", versionMixins.joinToString(","))
 
         filesMatching("fabric.mod.json") {
             expand(
@@ -102,11 +103,15 @@ tasks {
                 "loader_version" to loaderVersion
             )
         }
+
+        filesMatching("ctjs.mixins.json") {
+            filter<ReplaceTokens>("tokens" to mapOf(
+                "version_mixins" to versionMixins.joinToString("\",\n      \"")
+            ))
+        }
     }
 
-    withType<JavaCompile>().configureEach {
-        options.release.set(25)
-    }
+    withType<JavaCompile>().configureEach { options.release.set(25) }
 
     kotlin {
         jvmToolchain(25)
@@ -117,19 +122,21 @@ tasks {
     }
 
     jar {
-        archiveFileName.set(releaseJarName)
+        archiveFileName.set(
+            if (providers.gradleProperty("releaseBuild").isPresent)
+                "V5-Offline-${project.version}-$minecraftVersion.jar"
+            else "V5-Offline-DEV-${project.version}-$minecraftVersion.jar"
+        )
+        from(rootProject.file("LICENSE"))
+        from(rootProject.file("THIRD_PARTY_LICENSES.md"))
         exclude("typings.d.ts")
-        from("LICENSE")
-        from("THIRD_PARTY_LICENSES.md")
     }
 
     register<Copy>("generateTypings") {
         description = "Regenerates typing-generator/src/main/resources/typings.d.ts"
         group = "build"
         dependsOn("kspKotlin")
-        from(layout.buildDirectory.dir("generated/ksp/main/resources")) {
-            include("typings.d.ts")
-        }
-        into(layout.projectDirectory.dir("typing-generator/src/main/resources"))
+        from(layout.buildDirectory.dir("generated/ksp/main/resources")) { include("typings.d.ts") }
+        into(rootProject.layout.projectDirectory.dir("typing-generator/src/main/resources"))
     }
 }

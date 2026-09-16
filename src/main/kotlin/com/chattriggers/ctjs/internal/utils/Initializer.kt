@@ -21,6 +21,7 @@ internal interface Initializer {
             KeyBind,
             ModuleUpdater,
             MouseListener,
+            NanoVGPIPInitializer,
             StaticCommand
         )
     }

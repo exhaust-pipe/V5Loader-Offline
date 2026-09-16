@@ -35,71 +35,51 @@ internal object DynamicMixinManager {
     fun applyAccessWideners() {
         for ((mixin, details) in mixins) {
             val mappedClass = Mappings.getMappedClass(mixin.target) ?: run {
-                if (mixin.remap == false) {
-                    Mappings.getUnmappedClass(mixin.target)
-                } else {
-                    error("Unknown class name ${mixin.target}")
-                }
+                if (mixin.remap == false) Mappings.getUnmappedClass(mixin.target)
+                else error("Unknown class name ${mixin.target}")
             }
-
-            for ((field, isMutable) in details.fieldWideners)
-                Utils.widenField(mappedClass, field, isMutable)
-            for ((method, isMutable) in details.methodWideners)
-                Utils.widenMethod(mappedClass, method, isMutable)
+            for ((field, isMutable) in details.fieldWideners) Utils.widenField(mappedClass, field, isMutable)
+            for ((method, isMutable) in details.methodWideners) Utils.widenMethod(mappedClass, method, isMutable)
         }
     }
 
     @Synchronized
     fun prepare() {
         if (prepared) return
-
         Mappings.initialize()
         ModuleManager.setup()
         initialize()
         applyAccessWideners()
-
         prepared = true
     }
 
     fun applyMixins() {
         prepare()
-
         if (CTJS.isDevelopment) deleteOldMixinClasses()
-
         val dynamicMixins = mixins.map { (mixin, details) ->
             val ctx = GenerationContext(mixin)
             val generator = DynamicMixinGenerator(ctx, details)
             ByteBasedStreamHandler[ctx.generatedClassFullPath + ".class"] = generator.generate()
             ctx.generatedClassName
         }
-
         ByteBasedStreamHandler[GENERATED_MIXIN] = createDynamicMixinsJson(dynamicMixins)
-
         injectConfiguration()
     }
 
-    private fun createDynamicMixinsJson(mixins: List<String>): ByteArray {
-        return buildJsonObject {
-            put("required", JsonPrimitive(true))
-            put("minVersion", JsonPrimitive("0.8"))
-            put("package", JsonPrimitive(GENERATED_PACKAGE.replace('/', '.')))
-            put("compatibilityLevel", JsonPrimitive("JAVA_25"))
-            putJsonObject("injectors") {
-                put("defaultRequire", JsonPrimitive(1))
-            }
-
-            putJsonArray("client") { mixins.forEach(::add) }
-        }.toString().toByteArray()
-    }
+    private fun createDynamicMixinsJson(mixins: List<String>): ByteArray = buildJsonObject {
+        put("required", JsonPrimitive(true))
+        put("minVersion", JsonPrimitive("0.8"))
+        put("package", JsonPrimitive(GENERATED_PACKAGE.replace('/', '.')))
+        put("compatibilityLevel", JsonPrimitive("JAVA_25"))
+        putJsonObject("injectors") { put("defaultRequire", JsonPrimitive(1)) }
+        putJsonArray("client") { mixins.forEach(::add) }
+    }.toString().toByteArray()
 
     private fun injectConfiguration() {
-        // Credit to hugeblank and his allium project for this setup
-        // https://github.com/hugeblank/allium/blob/mixins/src/main/java/dev/hugeblank/allium/AlliumPreLaunch.java
         val classLoader = DynamicMixinManager::class.java.classLoader
         val addUrlMethod = classLoader::class.java.methods.first { it.name == "addUrlFwd" }
         addUrlMethod.isAccessible = true
         addUrlMethod.invoke(classLoader, ByteBasedStreamHandler.url)
-
         Mixins.addConfiguration(GENERATED_MIXIN)
     }
 
@@ -110,16 +90,9 @@ internal object DynamicMixinManager {
 
     private object ByteBasedStreamHandler : URLStreamHandler() {
         private val classBytes = mutableMapOf<String, ByteArray>()
-
         val url = URL.of(URI(GENERATED_PROTOCOL, null, "/", ""), ByteBasedStreamHandler)
-
-        operator fun set(path: String, bytes: ByteArray) {
-            check(classBytes.put(path, bytes) == null)
-        }
-
-        override fun openConnection(url: URL): URLConnection? =
-            classBytes[url.path.drop(1)]?.let { Connection(url, it) }
-
+        operator fun set(path: String, bytes: ByteArray) { check(classBytes.put(path, bytes) == null) }
+        override fun openConnection(url: URL): URLConnection? = classBytes[url.path.drop(1)]?.let { Connection(url, it) }
         private class Connection(url: URL, private val bytes: ByteArray) : URLConnection(url) {
             override fun getInputStream() = ByteArrayInputStream(bytes)
             override fun connect() = throw UnsupportedOperationException()

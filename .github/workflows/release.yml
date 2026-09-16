@@ -13,8 +13,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: [26.1.2, 26.2]
 
     steps:
       - name: Checkout tag
@@ -26,49 +30,50 @@ jobs:
           distribution: temurin
           java-version: 25
 
-      - name: Cache Gradle
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: "${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/*.versions.toml') }}"
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       - name: Build tagged release
         env:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          test -n "$TAG"
-          bash ./gradlew --no-daemon build -PreleaseBuild -Pmod_version="$TAG"
+          bash ./gradlew --no-daemon :${{ matrix.minecraft }}:build -PreleaseBuild -Pmod_version="$TAG"
 
-      - name: Resolve release asset
-        id: asset
+      - name: Stage release asset
         shell: bash
         env:
           TAG: ${{ github.ref_name }}
+          MC_VERSION: ${{ matrix.minecraft }}
         run: |
           set -euo pipefail
-          MC_VERSION="$(sed -nE 's/^minecraft = "([^"]+)"/\1/p' gradle/libs.versions.toml)"
-          ASSET="build/libs/V5-Offline-${TAG}-${MC_VERSION}.jar"
-          test -f "$ASSET"
-          echo "path=$ASSET" >> "$GITHUB_OUTPUT"
+          mkdir -p release-assets
+          cp "versions/${MC_VERSION}/build/libs/V5-Offline-${TAG}-${MC_VERSION}.jar" release-assets/
+
+      - name: Upload release asset
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ matrix.minecraft }}
+          path: release-assets/*.jar
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-          ASSET: ${{ steps.asset.outputs.path }}
         run: |
           set -euo pipefail
-
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ASSET" --clobber
+            gh release upload "$TAG" release-assets/*.jar --clobber
           else
-            gh release create "$TAG" "$ASSET" \
-              --verify-tag \
-              --title "$TAG" \
-              --generate-notes
+            gh release create "$TAG" release-assets/*.jar --verify-tag --title "$TAG" --generate-notes
           fi

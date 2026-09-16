@@ -2,36 +2,43 @@
 
 English | [简体中文](README_zh.md)
 
-An offline version of V5Loader with all third-party networking removed. It requires no account, does not download, update, or replace mods, scripts, or helper programs, and does not upload any data.
-This mod requires the similarly modified [V5-Offline](https://github.com/exhaust-pipe/V5-Offline) scripts to work. Since automatic downloads have been removed, you need to download that repository's contents manually. See [Installation](#installation).
+An offline-focused fork of V5Loader. It removes V5 account/authentication, vendor backend communication, telemetry, automatic module/update downloads, Discord RPC, proxy support, and other vendor-network features. Runtime module loading is local-only. The retained public Hypixel API path is used only by the matching V5-Offline scripts for public market/item data.
 
-## Original Project Links
+This loader is intended to be used with [V5-Offline](https://github.com/exhaust-pipe/V5-Offline). Install the scripts manually; the loader does not download or update them for you.
 
-- [Original project documentation](https://rdbt.top/docs/getting-started)
-- [Original V5Loader repository](https://github.com/V5-Client/V5Loader)
-- [Original V5 script repository](https://github.com/V5-Client/V5)
+## Runtime privacy model
 
-The original project's copyright and [GPL-3.0 license](LICENSE) are retained. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for third-party licenses.
+- No V5 account or vendor authentication.
+- No telemetry or vendor data reporting.
+- No automatic module, script, helper, or update downloads.
+- Remote image loading is blocked by the Offline compatibility layer.
+- Script output stays local in `logs/latest.log`; the upstream socket/eval console is not used.
+- The Skija renderer is packaged with its supported platform runtimes at build time, so first launch does not need to download Skija from Maven.
+- Public Hypixel data access used by the Offline scripts is intentionally retained.
 
-## Requirements
+## Supported Minecraft versions
 
-| Component              | Version                 |
-| ---------------------- | ----------------------- |
-| Minecraft              | 26.1.2                  |
-| Fabric Loader          | >= 0.19.3               |
-| Fabric API             | >= 0.153.0+26.1.2       |
+| Component | Version |
+| --- | --- |
+| Minecraft | 26.1.2 and 26.2 |
+| Fabric Loader | >= 0.19.3 |
 | Fabric Language Kotlin | >= 1.13.9+kotlin.2.3.10 |
+
+Fabric API is selected per Minecraft version through Stonecutter.
 
 ## Installation
 
-1. Install the mod and the dependencies listed above.
-2. Extract the zip file released with [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) as a **folder** directly into `config/ChatTriggers/modules/`. Ensure the folder is named `V5`, resulting in the following structure: `config/ChatTriggers/modules/V5`.
-3. Confirm that the directory structure matches the following and that no other version of V5 Loader or ChatTriggers is installed:
+1. Install the matching `V5-Offline-<version>-<minecraft>.jar`, Fabric API, and Fabric Language Kotlin.
+2. Download the matching [V5-Offline](https://github.com/exhaust-pipe/V5-Offline/releases) script package manually.
+3. Extract it as `config/ChatTriggers/modules/V5/`.
+4. Do not install another V5 Loader or ChatTriggers build at the same time.
+
+Expected layout:
 
 ```text
 Game directory/
 ├─ mods/
-│  ├─ V5-Offline
+│  ├─ V5-Offline-<version>-<minecraft>.jar
 │  ├─ fabric-api
 │  └─ fabric-language-kotlin
 └─ config/ChatTriggers/modules/V5/
@@ -41,73 +48,59 @@ Game directory/
    └─ assets/
 ```
 
-## Usage and Updates
+## Usage
 
-- Use `/v5` to open the interface, or assign a key binding manually.
-- To update scripts, manually replace the files in `config/ChatTriggers/modules/V5/`, then run `/ct load`. Changes involving dynamic mixins require a game restart.
-- Place custom scripts in `config/ChatTriggers/modules/V5Config/UserScripts/`.
-- Logs are stored in `logs/latest.log`. `/ct console` displays the log location.
+- `/v5` opens the V5 interface.
+- `/ct load` reloads local scripts. Dynamic mixin changes still require a game restart.
+- User scripts belong in `config/ChatTriggers/modules/V5Config/UserScripts/`.
+- Script logs are written to `logs/latest.log`; `/ct console` points to that file.
+- Public item/Bazaar data caches are stored under `config/ChatTriggers/modules/V5Config/public-data/` by the matching scripts.
 
-Item and Bazaar market data come from the official API. The cache is stored in `config/ChatTriggers/modules/V5Config/public-data/`.
+## Building
 
-## Building from Source
+Requirements: JDK 25, CMake 3.13+, and a C++ toolchain for the target native platform.
 
-The current target is Minecraft **26.1.2**. The JAR bundles native libraries for Windows x86_64, Linux x86_64, and macOS arm64 and x86_64. Minecraft 26.2 source compatibility will be handled separately.
+### JVM / mod builds
 
-Prepare JDK 25, CMake 3.15 or newer, and a C++ compiler for your platform. Set `JAVA_HOME` to JDK 25 and make the tools available in the current terminal's `PATH`. Run all commands from this repository's root. Intermediate files go under `build/`, and the Gradle cache goes under `.gradle/user-home/`; no external helper scripts or pre-existing caches are required.
-
-### 1. Build native libraries
-
-Run the commands for your operating system. On Windows, install Visual Studio C++ Build Tools and the Windows SDK, then use an x64 developer PowerShell. These commands use MSVC with the static C/C++ runtime:
-
-```powershell
-cmake -S NativeSrc -B build/native-windows -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
-cmake --build build/native-windows --config Release --parallel
-New-Item -ItemType Directory -Force src/main/resources/assets/v5/natives/windows/x86_64 | Out-Null
-Copy-Item build/native-windows/Release/V5PathJNI.dll src/main/resources/assets/v5/natives/windows/x86_64/V5PathJNI.dll -Force
-```
-
-On Linux x86_64, use GCC/G++ and Make (or the corresponding CMake build tools):
+Build one Minecraft version explicitly:
 
 ```bash
-cmake -S NativeSrc -B build/native-linux -DCMAKE_BUILD_TYPE=Release
-cmake --build build/native-linux --config Release --parallel
-mkdir -p src/main/resources/assets/v5/natives/linux/x86_64
-cp build/native-linux/V5PathJNI.so src/main/resources/assets/v5/natives/linux/x86_64/V5PathJNI.so
+./gradlew :26.1.2:build -PreleaseBuild
+./gradlew :26.2:build -PreleaseBuild
 ```
 
-On macOS, use Xcode Command Line Tools. Build both Apple Silicon and Intel libraries:
+Outputs are written below `versions/<minecraft>/build/libs/` and are named like:
 
-```bash
-for arch in arm64 x86_64; do
-  cmake -S NativeSrc -B "build/native-macos-$arch" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_OSX_ARCHITECTURES="$arch" \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
-  cmake --build "build/native-macos-$arch" --config Release --parallel
-  mkdir -p "src/main/resources/assets/v5/natives/macos/$arch"
-  cp "build/native-macos-$arch/V5PathJNI.dylib" "src/main/resources/assets/v5/natives/macos/$arch/V5PathJNI.dylib"
-done
+```text
+V5-Offline-5.2.0-offline-26.1.2.jar
+V5-Offline-5.2.0-offline-26.2.jar
 ```
 
-A local build replaces only the platform libraries produced by those commands; the other platforms retain the libraries already tracked in the repository. After changing `NativeSrc/`, build on each platform and collect all four files in the matching directories under `src/main/resources/assets/v5/natives/` before packaging. Alternatively, use GitHub Actions below to build and commit all platform libraries automatically.
+The build resolves dependencies from Maven/Gradle repositories, including the supported Skija platform runtimes. Those runtimes are then included in the produced mod so they are not downloaded at game startup.
 
-### 2. Build the JAR
+### Native Pathfinder JNI
 
-```powershell
-# Windows / PowerShell
-./gradlew.bat --gradle-user-home .gradle/user-home build --no-daemon -PreleaseBuild
-```
+The repository tracks four native Pathfinder binaries:
 
-```bash
-# Linux / macOS
-bash ./gradlew --gradle-user-home .gradle/user-home build --no-daemon -PreleaseBuild
-```
+- Windows x86_64
+- Linux x86_64
+- macOS arm64
+- macOS x86_64
 
-The output is `build/libs/V5-Offline-26.1.2.jar`, containing all four platform/architecture libraries. The first build downloads Gradle, Minecraft, and Maven dependencies. Once the same cache is complete, append `--offline` to the command.
+Windows uses the static MSVC runtime so the JNI DLL does not require a separately installed Visual C++ Redistributable.
 
-### 3. GitHub Actions
+Changing `NativeSrc/**` triggers the **Rebuild JNI** workflow. It builds all platforms, collects the four binaries, and commits updated files under `src/main/resources/assets/v5/natives/` back to the source branch when they changed.
 
-Enable Actions in your fork and select **Compile JNI and JVM → Run workflow** to rebuild all native platforms, commit the libraries back to the selected branch, and build the JAR. Pushing build-related files to any branch also triggers the workflow; JVM-only or dependency changes reuse committed native libraries.
+### GitHub Actions
 
-Download the JAR from the run's Artifacts. Successful builds on the `26.1.2` branch also create or update a GitHub Release in the current fork, using `mod_version` from `gradle.properties` plus an incrementing `-rN` suffix. No upstream service Secrets are needed. Native commits and releases require `contents: write`, and branch rules must allow Actions to push. See [.github/README.md](.github/README.md).
+- **Build**: builds both Minecraft 26.1.2 and 26.2 and uploads artifacts.
+- **Rebuild JNI**: runs automatically for `NativeSrc/**` changes and can also be started manually.
+- **Release**: runs only for tag pushes, builds both Minecraft versions, and publishes both JARs to the GitHub Release named by the tag.
+
+## Original project
+
+- [V5Loader](https://github.com/V5-Client/V5Loader)
+- [V5 scripts](https://github.com/V5-Client/V5)
+- [Original documentation](https://rdbt.top/docs/getting-started)
+
+The original project's copyright and GPL-3.0 license are retained. Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
