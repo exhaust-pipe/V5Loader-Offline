@@ -25,13 +25,6 @@ repositories {
 val minecraftVersion = sc.current.version
 val fabricApiVersion: String = sc.properties["deps.fabric_api"]
 val universalcraftMinecraftVersion = if (minecraftVersion == "26.1.2") "26.1" else minecraftVersion
-val skijaVersion = libs.versions.skija.get()
-val skijaPlatformArtifacts = listOf(
-    "skija-windows-x64",
-    "skija-linux-x64",
-    "skija-macos-x64",
-    "skija-macos-arm64",
-)
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraftVersion")
@@ -53,10 +46,11 @@ dependencies {
     compileOnly(libs.sponge.mixin)
     ksp(project(":typing-generator"))
 
-    implementation(libs.skija.shared) { include(this) }
-    implementation(libs.skija.types) { include(this) }
-    skijaPlatformArtifacts.forEach { artifact ->
-        implementation("io.github.humbleui:$artifact:$skijaVersion") { include(this) }
+    implementation(libs.lwjgl.nanovg) { include(this) }
+    listOf("windows", "linux", "macos", "macos-arm64").forEach {
+        implementation(variantOf(libs.lwjgl.nanovg) { classifier("natives-$it") }) {
+            include(this)
+        }
     }
     implementation(libs.mixinextras) { include(this) }
 
@@ -88,10 +82,7 @@ tasks {
         val versionMixins = if (minecraftVersion == "26.1.2") {
             listOf("GuiHudMixin", "GuiScreenMixin", "LevelRendererMixin")
         } else {
-            listOf(
-                "CommandEncoderMixin", "GpuDeviceMixin", "GuiHudMixin", "GameRendererAccessor",
-                "GuiScreenMixin", "LevelRendererMixin", "VulkanCommandEncoderMixin", "VulkanDeviceMixin",
-            )
+            listOf("GuiHudMixin", "GameRendererAccessor", "GuiScreenMixin", "LevelRendererMixin")
         }
 
         from(rootProject.file("typing-generator/src/main/resources")) { include("provided-types.properties") }

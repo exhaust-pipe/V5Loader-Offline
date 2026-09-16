@@ -1,18 +1,23 @@
 package com.chattriggers.ctjs.internal.mixins;
 
 import com.chattriggers.ctjs.api.render.Render2D;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import net.minecraft.client.gui.render.GuiRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Screen.class)
+/** Runs the V5 2D callbacks in the actual GUI render pass instead of render-state extraction. */
+@Mixin(GuiRenderer.class)
 public class GuiRendererMixin {
-    @Inject(method = "extractRenderStateWithTooltipAndSubtitles", at = @At("TAIL"))
-    private void afterExtract(GuiGraphicsExtractor context, int mouseX, int mouseY, float deltaTicks, CallbackInfo ci) {
-        Render2D.INSTANCE.runPreDrawables(context);
-        Render2D.INSTANCE.runDrawables(context);
+    @Inject(method = "render", at = @At("HEAD"))
+    private void beforeRender(GpuBufferSlice fogBuffer, CallbackInfo ci) {
+        Render2D.INSTANCE.runPreDrawables();
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void afterRender(GpuBufferSlice fogBuffer, CallbackInfo ci) {
+        Render2D.INSTANCE.runDrawables();
     }
 }

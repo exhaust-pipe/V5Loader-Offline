@@ -1,8 +1,6 @@
 package com.chattriggers.ctjs.internal.mixins;
 
-import com.chattriggers.ctjs.api.client.Client;
 import com.chattriggers.ctjs.api.render.DrawContextHolder;
-import com.chattriggers.ctjs.api.render.Render2D;
 import com.chattriggers.ctjs.api.world.Scoreboard;
 import com.chattriggers.ctjs.internal.engine.CTEvents;
 import gg.essential.universal.UMatrixStack;
@@ -22,9 +20,6 @@ public class GuiHudMixin {
     @Inject(method = "extractRenderState", at = @At("HEAD"))
     private void captureContext(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
         DrawContextHolder.currentContext = context;
-        if (Client.getCurrentScreen() == null) {
-            Render2D.INSTANCE.runPreDrawables(context);
-        }
     }
 
     @Inject(method = "extractScoreboardSidebar", at = @At("HEAD"), cancellable = true)
@@ -41,8 +36,5 @@ public class GuiHudMixin {
             new UMatrixStack(context.pose()).toMC(),
             tickCounter.getGameTimeDeltaTicks()
         );
-        if (Client.getCurrentScreen() == null) {
-            Render2D.INSTANCE.runDrawables(context);
-        }
     }
 }

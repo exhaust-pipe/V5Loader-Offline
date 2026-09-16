@@ -8,7 +8,6 @@ import com.chattriggers.ctjs.api.commands.DynamicCommands
 import com.chattriggers.ctjs.api.message.ChatLib
 import com.chattriggers.ctjs.api.render.Image
 import com.chattriggers.ctjs.api.render.Render2D
-import com.chattriggers.ctjs.api.render.skia.createSkijaPIP
 import com.chattriggers.ctjs.api.triggers.TriggerType
 import com.chattriggers.ctjs.api.world.Scoreboard
 import com.chattriggers.ctjs.api.world.World
@@ -21,15 +20,12 @@ import com.chattriggers.ctjs.internal.utils.Initializer
 import kotlinx.serialization.json.Json
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
-import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import kotlin.concurrent.thread
 
 class CTJS : ClientModInitializer {
     override fun onInitializeClient() {
-        PictureInPictureRendererRegistry.register { input -> createSkijaPIP(input, pre = false) }
-        PictureInPictureRendererRegistry.register { input -> createSkijaPIP(input, pre = true) }
         Client.referenceSystemTime = System.nanoTime()
         Initializer.initializers.forEach(Initializer::init)
         Config.loadData()
@@ -148,7 +144,7 @@ class CTJS : ClientModInitializer {
             if (asCommand) ChatLib.chat("&cReloading ChatTriggers...")
 
             // Complete destruction of the previous generation on the client thread before
-            // the replacement modules are allowed to allocate images, sounds or Skija caches.
+            // replacement modules are allowed to allocate images, sounds, or renderer caches.
             Client.scheduleTask {
                 destroyResources(resources)
                 thread(name = "CTJS reload") {
