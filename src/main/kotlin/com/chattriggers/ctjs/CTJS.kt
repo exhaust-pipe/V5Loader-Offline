@@ -7,6 +7,7 @@ import com.chattriggers.ctjs.api.client.Sound
 import com.chattriggers.ctjs.api.commands.DynamicCommands
 import com.chattriggers.ctjs.api.message.ChatLib
 import com.chattriggers.ctjs.api.render.Image
+import com.chattriggers.ctjs.api.render.NVGRenderer
 import com.chattriggers.ctjs.api.render.Render2D
 import com.chattriggers.ctjs.api.triggers.TriggerType
 import com.chattriggers.ctjs.api.world.Scoreboard
@@ -114,6 +115,7 @@ class CTJS : ClientModInitializer {
             StaticCommand.unregisterAll()
             DynamicCommands.unregisterAll()
             Render2D.clearCallbacks()
+            NVGRenderer.clearCallbacks()
 
             if (Config.clearConsoleOnLoad) Console.clear()
             if (asCommand) ChatLib.chat("&7Unloaded ChatTriggers")
