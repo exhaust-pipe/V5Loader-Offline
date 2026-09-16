@@ -120,9 +120,21 @@ open class GuiRendererBackend {
         NVGRenderer.text(text, x, y, size, color, font, align)
 
     @JvmOverloads
-    fun textWidth(text: String, size: Float, font: Font? = defaultFont) = NVGRenderer.textWidth(text, size, font)
+    fun textWidth(text: String, size: Float, font: Font? = defaultFont): Float {
+        // Module construction happens on the CTJS loader thread, which has no current GL
+        // context. NanoVG font measurement must therefore only run inside our GUI render pass.
+        if (backendDrawing && NVGRenderer.isDrawing()) return NVGRenderer.textWidth(text, size, font)
 
-    fun loadImage(path: String) = NVGRenderer.loadImage(path)
+        // The exact NanoVG metrics are not available until the first render frame. Minecraft's
+        // font metrics are a stable, GL-free approximation for initial GUI layout; later layout
+        // work performed during rendering uses the exact NanoVG font metrics above.
+        return Minecraft.getInstance().font.width(text).toFloat() * (size / 9f)
+    }
+
+    // Loading script modules must not allocate OpenGL/NanoVG textures. drawImage() already
+    // performs a lazy load while a NanoVG frame is active, so keep loadImage() as a handle-only
+    // compatibility call.
+    fun loadImage(path: String) = path
     fun unloadImage(path: String) = NVGRenderer.unloadImage(path)
     fun isImageLoaded(path: String) = NVGRenderer.isImageLoaded(path)
 
