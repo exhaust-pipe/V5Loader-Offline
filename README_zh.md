@@ -78,22 +78,39 @@ V5-Offline-5.2.0-offline-26.2.jar
 
 ### Native Pathfinder JNI
 
-仓库维护四套 Pathfinder 原生库：
+仓库不保存生成后的 Pathfinder JNI 二进制文件。完整 Mod 需要以下四个文件：
 
-- Windows x86_64
-- Linux x86_64
-- macOS arm64
-- macOS x86_64
+```text
+src/main/resources/assets/v5/natives/
+├─ linux/x86_64/V5PathJNI.so
+├─ macos/arm64/V5PathJNI.dylib
+├─ macos/x86_64/V5PathJNI.dylib
+└─ windows/x86_64/V5PathJNI.dll
+```
 
 Windows 使用静态 MSVC runtime，使 JNI DLL 不依赖目标机器额外安装 Visual C++ Redistributable。
 
-修改 `NativeSrc/**` 会自动触发 **Rebuild JNI** workflow：三平台构建完成后收集四个原生库，并在内容发生变化时回写到当前源码分支的 `src/main/resources/assets/v5/natives/`。
+本地构建 JNI 时可使用与 Actions builder 相同的 CMake 参数。Linux：
+
+```bash
+cmake -S NativeSrc -B NativeSrc/build -DCMAKE_BUILD_TYPE=Release
+cmake --build NativeSrc/build --config Release --parallel
+```
+
+macOS 还需要指定目标架构，例如添加 `-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0`；构建 x86_64 时将架构改为 `x86_64`。Windows x64 + MSVC：
+
+```powershell
+cmake -S NativeSrc -B NativeSrc/build -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+cmake --build NativeSrc/build --config Release --parallel
+```
+
+构建完成后，将原生库复制到上方对应目录，再运行 Gradle。仅在本机测试 JNI 时只需要当前平台的文件；若要在本地生成完整的跨平台 Mod JAR，则需要准备全部四个二进制文件。
 
 ### GitHub Actions
 
-- **Build**：同时构建 Minecraft 26.1.2 和 26.2，并上传 artifacts。
-- **Rebuild JNI**：`NativeSrc/**` 发生变化时自动运行，也支持手动触发。
-- **Release**：仅在 push tag 时运行，构建两个 Minecraft 版本，并把两个 JAR 发布到以该 tag 命名的 GitHub Release。
+- **Build**：优先按源码哈希恢复 JNI bundle；缓存未命中时才构建 Linux、macOS、Windows JNI，然后统一构建 Minecraft 26.1.2 和 26.2 并上传最终 JAR artifacts。
+- **Native builders**：Linux、macOS、Windows 的 reusable workflow，由 Build 和 Release 调用；生成的 JNI 文件不会提交回仓库。
+- **Release**：仅在 push tag 时运行，始终从源码重编全部 JNI，再使用 tag 作为 Mod 版本构建两个 Minecraft 版本，并发布到对应 GitHub Release。
 
 ## 原项目
 
