@@ -83,6 +83,8 @@ inline bool Runtime::moveDescend(const Int3& current, const int dx, const int dz
     }
 
     const int destY = floorY + 1;
+    if (!isSafe(destX, destY, destZ)) return false;
+
     float totalCost = ActionCosts::WALK_OFF_EDGE_TIME + ActionCosts::getFallTime(dropBlocks);
     if (dropBlocks > 3) {
       const int excess = dropBlocks - 3;
