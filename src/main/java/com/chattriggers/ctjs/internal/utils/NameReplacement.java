@@ -55,10 +55,11 @@ public final class NameReplacement {
     private static Component createReplacement(String text) {
         if (text.matches("#[0-9a-fA-F]{6}.+")) {
             return Component.literal(text.substring(7)).withStyle(
-                    Style.EMPTY.withBold(boldEnabled).withColor(markColor(Integer.parseInt(text.substring(1, 7), 16))));
+                    Style.EMPTY.withColor(markColor(Integer.parseInt(text.substring(1, 7), 16))));
         }
         MutableComponent result = Component.empty();
-        boolean rainbow = gradientEnabled && !text.contains("&") && !text.contains("§");
+        boolean plain = !text.contains("&") && !text.contains("§");
+        boolean rainbow = plain && gradientEnabled;
         Style style = Style.EMPTY;
         int character = 0;
         for (int i = 0; i < text.length();) {
@@ -72,9 +73,14 @@ public final class NameReplacement {
                     continue;
                 }
             }
-            Style glyphStyle = rainbow ? style.withBold(boldEnabled).withColor(chroma[character++ % 40])
-                    : style.withBold(boldEnabled).withColor((TextColor) null).withColor(
-                            markColor(style.getColor() == null ? 0xffffff : style.getColor().getValue()));
+            Style glyphStyle;
+            if (plain) {
+                glyphStyle = style.withBold(boldEnabled).withColor(
+                        rainbow ? chroma[character++ % 40] : markColor(0xffffff));
+            } else {
+                glyphStyle = style.withColor((TextColor) null).withColor(
+                        markColor(style.getColor() == null ? 0xffffff : style.getColor().getValue()));
+            }
             result.append(Component.literal(new String(Character.toChars(codePoint))).setStyle(glyphStyle));
         }
         return result;
