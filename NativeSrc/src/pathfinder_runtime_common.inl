@@ -109,7 +109,9 @@ inline bool Runtime::isSafe(const int x, const int y, const int z) {
   if (cached.generation != generation) cached = {generation, {}};
   if ((cached.value.computed & bit) != 0) return (cached.value.values & bit) != 0;
 
-  const bool safe = hasFlag(flagsAt(x, y - 1, z), VF_SOLID) &&
+  const uint16_t support = flagsAt(x, y - 1, z);
+  const bool safe = hasFlag(support, VF_SOLID) &&
+    !hasFlag(support, VF_FENCE_LIKE) &&
     isPassableFlags(flagsAt(x, y, z)) &&
     isPassableFlags(flagsAt(x, y + 1, z));
   cached.value.computed |= bit;

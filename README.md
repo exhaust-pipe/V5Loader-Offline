@@ -78,22 +78,39 @@ The build resolves dependencies from Maven/Gradle repositories, including the su
 
 ### Native Pathfinder JNI
 
-The repository tracks four native Pathfinder binaries:
+Generated Pathfinder JNI binaries are not stored in Git. A complete mod contains these four files:
 
-- Windows x86_64
-- Linux x86_64
-- macOS arm64
-- macOS x86_64
+```text
+src/main/resources/assets/v5/natives/
+├─ linux/x86_64/V5PathJNI.so
+├─ macos/arm64/V5PathJNI.dylib
+├─ macos/x86_64/V5PathJNI.dylib
+└─ windows/x86_64/V5PathJNI.dll
+```
 
 Windows uses the static MSVC runtime so the JNI DLL does not require a separately installed Visual C++ Redistributable.
 
-Changing `NativeSrc/**` triggers the **Rebuild JNI** workflow. It builds all platforms, collects the four binaries, and commits updated files under `src/main/resources/assets/v5/natives/` back to the source branch when they changed.
+For local JNI builds, use the same CMake configuration as the Actions builders. On Linux:
+
+```bash
+cmake -S NativeSrc -B NativeSrc/build -DCMAKE_BUILD_TYPE=Release
+cmake --build NativeSrc/build --config Release --parallel
+```
+
+On macOS, also set the target architecture, for example `-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0`; use `x86_64` instead when building that target. On Windows x64 with MSVC:
+
+```powershell
+cmake -S NativeSrc -B NativeSrc/build -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+cmake --build NativeSrc/build --config Release --parallel
+```
+
+Copy the generated library into its matching path above before running Gradle. Building only the current platform is enough for local JNI testing; producing a complete cross-platform mod JAR locally requires all four binaries.
 
 ### GitHub Actions
 
-- **Build**: builds both Minecraft 26.1.2 and 26.2 and uploads artifacts.
-- **Rebuild JNI**: runs automatically for `NativeSrc/**` changes and can also be started manually.
-- **Release**: runs only for tag pushes, builds both Minecraft versions, and publishes both JARs to the GitHub Release named by the tag.
+- **Build**: restores the JNI bundle by source hash when possible; on a cache miss it builds the required Linux, macOS, and Windows JNI targets first, then builds Minecraft 26.1.2 and 26.2 and uploads the final JAR artifacts.
+- **Native builders**: reusable Linux, macOS, and Windows workflows used by Build and Release. Generated JNI files are never committed back to the repository.
+- **Release**: runs only for tag pushes, always rebuilds all JNI targets from source, builds both Minecraft versions using the tag as the mod version, and publishes both JARs to the matching GitHub Release.
 
 ## Original project
 

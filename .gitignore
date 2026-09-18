@@ -43,4 +43,7 @@ replay_*.log
 versions/*/api/
 versions/*/logs/
 
+# generated JNI bundle
+src/main/resources/assets/v5/natives/
+
 grunt-main.jar

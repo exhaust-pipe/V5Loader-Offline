@@ -18,6 +18,8 @@ public final class NameReplacement {
     private static String username;
     private static String input;
     private static Component replacement;
+    private static boolean gradientEnabled = true;
+    private static boolean boldEnabled = true;
     private static final Cache<FormattedCharSequence, FormattedCharSequence> sequences =
             CacheBuilder.newBuilder().weakKeys().maximumSize(2048).build();
     private static final TextColor[] chroma = new TextColor[40];
@@ -33,9 +35,15 @@ public final class NameReplacement {
     }
 
     public static void configure(String name, String customName) {
-        if (Objects.equals(username, name) && Objects.equals(input, customName)) return;
+        configure(name, customName, true, true);
+    }
+
+    public static void configure(String name, String customName, boolean gradient, boolean bold) {
+        if (Objects.equals(username, name) && Objects.equals(input, customName) && gradientEnabled == gradient && boldEnabled == bold) return;
         username = name;
         input = customName;
+        gradientEnabled = gradient;
+        boldEnabled = bold;
         replacement = customName == null ? Component.empty() : createReplacement(customName);
         sequences.invalidateAll();
     }
@@ -50,7 +58,8 @@ public final class NameReplacement {
                     Style.EMPTY.withColor(markColor(Integer.parseInt(text.substring(1, 7), 16))));
         }
         MutableComponent result = Component.empty();
-        boolean rainbow = !text.contains("&") && !text.contains("§");
+        boolean plain = !text.contains("&") && !text.contains("§");
+        boolean rainbow = plain && gradientEnabled;
         Style style = Style.EMPTY;
         int character = 0;
         for (int i = 0; i < text.length();) {
@@ -64,9 +73,14 @@ public final class NameReplacement {
                     continue;
                 }
             }
-            Style glyphStyle = rainbow ? style.withBold(true).withColor(chroma[character++ % 40])
-                    : style.withColor((TextColor) null).withColor(
-                            markColor(style.getColor() == null ? 0xffffff : style.getColor().getValue()));
+            Style glyphStyle;
+            if (plain) {
+                glyphStyle = style.withBold(boldEnabled).withColor(
+                        rainbow ? chroma[character++ % 40] : markColor(0xffffff));
+            } else {
+                glyphStyle = style.withColor((TextColor) null).withColor(
+                        markColor(style.getColor() == null ? 0xffffff : style.getColor().getValue()));
+            }
             result.append(Component.literal(new String(Character.toChars(codePoint))).setStyle(glyphStyle));
         }
         return result;

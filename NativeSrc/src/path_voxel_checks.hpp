@@ -98,7 +98,9 @@ inline bool isEtherwarpLandingBlockVoxel(const WorldSnapshot& world, const int x
 }
 
 inline bool isWalkSafeVoxel(const WorldSnapshot& world, const int x, const int y, const int z) {
-  return isSolidVoxel(world, x, y - 1, z) &&
+  const uint16_t supportFlags = flagsAt(world, x, y - 1, z);
+  return hasVoxelFlag(supportFlags, VF_SOLID) &&
+    !hasVoxelFlag(supportFlags, VF_FENCE_LIKE) &&
     isWalkPassableVoxel(world, x, y, z) &&
     isWalkPassableVoxel(world, x, y + 1, z);
 }

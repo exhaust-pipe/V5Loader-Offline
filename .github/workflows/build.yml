@@ -8,6 +8,7 @@ on:
       - "src/main/java/**"
       - "src/main/kotlin/**"
       - "src/main/resources/**"
+      - "NativeSrc/**"
       - "typing-generator/src/**"
       - "versions/**"
       - "stonecutter.gradle.kts"
@@ -15,11 +16,16 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - "gradle/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/native-linux-builder.yml"
+      - ".github/workflows/native-macos-builder.yml"
+      - ".github/workflows/native-windows-builder.yml"
   pull_request:
     paths:
       - "src/main/java/**"
       - "src/main/kotlin/**"
       - "src/main/resources/**"
+      - "NativeSrc/**"
       - "typing-generator/src/**"
       - "versions/**"
       - "stonecutter.gradle.kts"
@@ -27,6 +33,10 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - "gradle/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/native-linux-builder.yml"
+      - ".github/workflows/native-macos-builder.yml"
+      - ".github/workflows/native-windows-builder.yml"
 
 permissions:
   contents: read
@@ -36,8 +46,125 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  native-key:
+    name: Resolve JNI cache key
+    runs-on: ubuntu-24.04
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+      hit: ${{ steps.cache.outputs.cache-hit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Resolve native source hash
+        id: key
+        shell: bash
+        run: |
+          set -euo pipefail
+          HASH="${{ hashFiles('NativeSrc/**', '.github/workflows/native-linux-builder.yml', '.github/workflows/native-macos-builder.yml', '.github/workflows/native-windows-builder.yml') }}"
+          test -n "$HASH"
+          echo "key=v5-native-${HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore JNI bundle
+        id: cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: src/main/resources/assets/v5/natives
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+
+  native-linux:
+    name: Build JNI Linux
+    needs: native-key
+    if: needs.native-key.outputs.hit != 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/native-linux-builder.yml
+
+  native-macos:
+    name: Build JNI macOS
+    needs: native-key
+    if: needs.native-key.outputs.hit != 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/native-macos-builder.yml
+
+  native-windows:
+    name: Build JNI Windows
+    needs: native-key
+    if: needs.native-key.outputs.hit != 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/native-windows-builder.yml
+
+  native-bundle:
+    name: Prepare JNI bundle
+    needs: [native-key, native-linux, native-macos, native-windows]
+    if: always() && !cancelled() && needs.native-key.result == 'success' && (needs.native-key.outputs.hit == 'true' || (needs.native-linux.result == 'success' && needs.native-macos.result == 'success' && needs.native-windows.result == 'success'))
+    runs-on: ubuntu-24.04
+    outputs:
+      key: ${{ needs.native-key.outputs.key }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Restore cached JNI bundle
+        if: needs.native-key.outputs.hit == 'true'
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: src/main/resources/assets/v5/natives
+          key: ${{ needs.native-key.outputs.key }}
+          fail-on-cache-miss: true
+
+      - name: Restore Linux native cache
+        if: needs.native-key.outputs.hit != 'true'
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/linux/x86_64
+          key: v5-native-run-${{ github.run_id }}-linux-x86_64
+          fail-on-cache-miss: true
+
+      - name: Restore macOS native cache
+        if: needs.native-key.outputs.hit != 'true'
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/macos
+          key: v5-native-run-${{ github.run_id }}-macos
+          fail-on-cache-miss: true
+
+      - name: Restore Windows native cache
+        if: needs.native-key.outputs.hit != 'true'
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/windows/x86_64
+          key: v5-native-run-${{ github.run_id }}-windows-x86_64
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - name: Install JNI bundle
+        if: needs.native-key.outputs.hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST=src/main/resources/assets/v5/natives
+          rm -rf "$DEST"
+          mkdir -p "$DEST/linux/x86_64" "$DEST/macos/arm64" "$DEST/macos/x86_64" "$DEST/windows/x86_64"
+          cp artifact/linux/x86_64/V5PathJNI.so "$DEST/linux/x86_64/V5PathJNI.so"
+          cp artifact/macos/arm64/V5PathJNI.dylib "$DEST/macos/arm64/V5PathJNI.dylib"
+          cp artifact/macos/x86_64/V5PathJNI.dylib "$DEST/macos/x86_64/V5PathJNI.dylib"
+          cp artifact/windows/x86_64/V5PathJNI.dll "$DEST/windows/x86_64/V5PathJNI.dll"
+
+      - name: Save JNI bundle cache
+        if: needs.native-key.outputs.hit != 'true'
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: src/main/resources/assets/v5/natives
+          key: ${{ needs.native-key.outputs.key }}
+
   build:
     name: Build Minecraft ${{ matrix.minecraft }}
+    needs: native-bundle
+    if: always() && !cancelled() && needs.native-bundle.result == 'success'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -64,20 +191,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Restore JNI bundle
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: src/main/resources/assets/v5/natives
+          key: ${{ needs.native-bundle.outputs.key }}
+          fail-on-cache-miss: true
+
       - name: Build
         run: bash ./gradlew --no-daemon :${{ matrix.minecraft }}:build -PreleaseBuild
 
-      - name: Resolve build artifact
+      - name: Stage build artifact
         id: artifact
         shell: bash
+        env:
+          MC_VERSION: ${{ matrix.minecraft }}
+          PR_BRANCH: ${{ github.head_ref }}
+          REF_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          MOD_VERSION="$(sed -n 's/^mod_version *= *//p' gradle.properties | tr -d '\r')"
-          MC_VERSION="${{ matrix.minecraft }}"
-          JAR="versions/${MC_VERSION}/build/libs/V5-Offline-${MOD_VERSION}-${MC_VERSION}.jar"
-          test -f "$JAR"
-          echo "path=$JAR" >> "$GITHUB_OUTPUT"
-          echo "name=V5-Offline-${MOD_VERSION}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
+          RAW_VERSION="$(sed -n 's/^mod_version *= *//p' gradle.properties | tr -d '\r')"
+          BRANCH_NAME="${PR_BRANCH:-$REF_BRANCH}"
+          SAFE_BRANCH="$(printf '%s' "$BRANCH_NAME" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          SOURCE_JAR="versions/${MC_VERSION}/build/libs/V5-Offline-${RAW_VERSION}-${MC_VERSION}.jar"
+          ARTIFACT_NAME="V5-Offline-${SAFE_BRANCH}-${MC_VERSION}"
+          mkdir -p artifact
+          test -f "$SOURCE_JAR"
+          cp "$SOURCE_JAR" "artifact/${ARTIFACT_NAME}.jar"
+          echo "path=artifact/${ARTIFACT_NAME}.jar" >> "$GITHUB_OUTPUT"
+          echo "name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
