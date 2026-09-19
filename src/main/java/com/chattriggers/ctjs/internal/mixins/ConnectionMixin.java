@@ -58,7 +58,7 @@ public abstract class ConnectionMixin {
 
     @Inject(method = "exceptionCaught", at = @At("HEAD"))
     private void networkFailed(ChannelHandlerContext context, Throwable error, CallbackInfo ci) {
-        GameState.mark((Connection) (Object) this, "unexpected", "network");
+        GameState.markNetworkFailure((Connection) (Object) this);
     }
 
     @Inject(method = "disconnect(Lnet/minecraft/network/DisconnectionDetails;)V", at = @At("HEAD"))
