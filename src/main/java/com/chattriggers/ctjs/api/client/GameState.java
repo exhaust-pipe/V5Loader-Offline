@@ -57,6 +57,15 @@ public final class GameState {
         if (connection != null) causes.putIfAbsent(connection, new Cause(cause, source));
     }
 
+    /**
+     * Marks a concrete Netty/codec failure as the terminal disconnect cause.
+     * Unlike provisional lifecycle marks, an actual exception must win so recovery
+     * is not suppressed by an earlier manual/transfer classification.
+     */
+    public static synchronized void markNetworkFailure(Connection connection) {
+        if (connection != null) causes.put(connection, new Cause("unexpected", "network"));
+    }
+
     public static void markActive(String cause, String source) {
         var listener = Minecraft.getInstance().getConnection();
         mark(listener == null ? active : listener.getConnection(), cause, source);
