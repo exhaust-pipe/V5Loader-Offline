@@ -31,9 +31,15 @@ jobs:
       contents: read
     uses: ./.github/workflows/native-windows-builder.yml
 
+  native-android:
+    name: Build Android natives
+    permissions:
+      contents: read
+    uses: ./.github/workflows/native-android-builder.yml
+
   native-bundle:
     name: Prepare release JNI bundle
-    needs: [native-linux, native-macos, native-windows]
+    needs: [native-linux, native-macos, native-windows, native-android]
     runs-on: ubuntu-24.04
     outputs:
       key: v5-native-run-${{ github.run_id }}-bundle
@@ -64,17 +70,45 @@ jobs:
           enableCrossOsArchive: true
           fail-on-cache-miss: true
 
+      - name: Restore linux arm64 native cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/linux/arm64
+          key: v5-native-run-${{ github.run_id }}-linux-arm64
+          fail-on-cache-miss: true
+
+      - name: Restore windows arm64 native cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/windows/arm64
+          key: v5-native-run-${{ github.run_id }}-windows-arm64
+          fail-on-cache-miss: true
+          enableCrossOsArchive: true
+
+      - name: Restore android arm64 native cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/android/arm64
+          key: v5-native-run-${{ github.run_id }}-android-arm64
+          fail-on-cache-miss: true
+
+      - name: Restore android x86_64 native cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: artifact/android/x86_64
+          key: v5-native-run-${{ github.run_id }}-android-x86_64
+          fail-on-cache-miss: true
+
       - name: Install JNI bundle
         shell: bash
         run: |
           set -euo pipefail
           DEST=src/main/resources/assets/v5/natives
           rm -rf "$DEST"
-          mkdir -p "$DEST/linux/x86_64" "$DEST/macos/arm64" "$DEST/macos/x86_64" "$DEST/windows/x86_64"
-          cp artifact/linux/x86_64/V5PathJNI.so "$DEST/linux/x86_64/V5PathJNI.so"
-          cp artifact/macos/arm64/V5PathJNI.dylib "$DEST/macos/arm64/V5PathJNI.dylib"
-          cp artifact/macos/x86_64/V5PathJNI.dylib "$DEST/macos/x86_64/V5PathJNI.dylib"
-          cp artifact/windows/x86_64/V5PathJNI.dll "$DEST/windows/x86_64/V5PathJNI.dll"
+          for TARGET in linux/x86_64 linux/arm64 macos/arm64 macos/x86_64 windows/x86_64 windows/arm64 android/arm64 android/x86_64; do
+            mkdir -p "$DEST/$TARGET"
+            cp "artifact/$TARGET/"* "$DEST/$TARGET/"
+          done
 
       - name: Cache release JNI bundle for build jobs
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3

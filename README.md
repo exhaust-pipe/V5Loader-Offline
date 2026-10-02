@@ -74,21 +74,27 @@ V5-Offline-5.2.0-offline-26.1.2.jar
 V5-Offline-5.2.0-offline-26.2.jar
 ```
 
-The build resolves dependencies from Maven/Gradle repositories, including the supported Skija platform runtimes. Those runtimes are then included in the produced mod so they are not downloaded at game startup.
+The build resolves dependencies from Maven/Gradle repositories, including NanoVG runtimes for Windows, Linux, and macOS on x86_64 and ARM64. Android NanoVG is compiled from the matching LWJGL sources. Native libraries are bundled in the mod; none are downloaded at game startup.
 
 ### Native Pathfinder JNI
 
-Generated Pathfinder JNI binaries are not stored in Git. A complete mod contains these four files:
+Generated Pathfinder JNI binaries are not stored in Git. A complete mod contains eight Pathfinder JNI targets and two Android NanoVG libraries:
 
 ```text
 src/main/resources/assets/v5/natives/
+├─ android/arm64/V5PathJNI.so
+├─ android/arm64/liblwjgl_nanovg.so
+├─ android/x86_64/V5PathJNI.so
+├─ android/x86_64/liblwjgl_nanovg.so
+├─ linux/arm64/V5PathJNI.so
 ├─ linux/x86_64/V5PathJNI.so
 ├─ macos/arm64/V5PathJNI.dylib
 ├─ macos/x86_64/V5PathJNI.dylib
+├─ windows/arm64/V5PathJNI.dll
 └─ windows/x86_64/V5PathJNI.dll
 ```
 
-Windows uses the static MSVC runtime so the JNI DLL does not require a separately installed Visual C++ Redistributable.
+Windows uses the static MSVC runtime so the JNI DLL does not require a separately installed Visual C++ Redistributable. Android uses static libc++, targets API 24 or newer, and supports 16 KB memory pages. An Android launcher must still provide Java 25, compatible LWJGL core libraries, and an OpenGL 3 compatible Minecraft rendering environment; this project is not a standalone Android application.
 
 For local JNI builds, use the same CMake configuration as the Actions builders. On Linux:
 
@@ -97,19 +103,30 @@ cmake -S NativeSrc -B NativeSrc/build -DCMAKE_BUILD_TYPE=Release
 cmake --build NativeSrc/build --config Release --parallel
 ```
 
-On macOS, also set the target architecture, for example `-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0`; use `x86_64` instead when building that target. On Windows x64 with MSVC:
+On macOS, also set the target architecture, for example `-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0`; use `x86_64` instead when building that target. Linux ARM64 uses the same command on an ARM64 host. On Windows x64 with MSVC (use `-A ARM64` for ARM64):
 
 ```powershell
 cmake -S NativeSrc -B NativeSrc/build -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
 cmake --build NativeSrc/build --config Release --parallel
 ```
 
-Copy the generated library into its matching path above before running Gradle. Building only the current platform is enough for local JNI testing; producing a complete cross-platform mod JAR locally requires all four binaries.
+Android builds produce both Pathfinder JNI and NanoVG. Install NDK 27.2.12479018 and check out LWJGL 3.4.1 (commit `b800ccffab14396fc529ddb6c931b7c5c5226763`) into `../lwjgl3`; its version must match `gradle/libs.versions.toml`. Build ARM64 as follows, or change the ABI to `x86_64`:
+
+```bash
+cmake -S NativeSrc -B NativeSrc/build-android \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 \
+  -DANDROID_STL=c++_static -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON \
+  -DV5_LWJGL_SOURCE_DIR="$PWD/../lwjgl3" -DCMAKE_BUILD_TYPE=Release
+cmake --build NativeSrc/build-android --config Release --parallel
+```
+
+Copy the generated `V5PathJNI` library into its matching path above before running Gradle. Android also requires `nanovg/liblwjgl_nanovg.so`. Local validation only needs the current platform libraries; a complete cross-platform JAR requires every file above. Startup, GUI rendering, and pathfinding on the added platforms still require validation on their respective devices.
 
 ### GitHub Actions
 
-- **Build**: restores the JNI bundle by source hash when possible; on a cache miss it builds the required Linux, macOS, and Windows JNI targets first, then builds Minecraft 26.1.2 and 26.2 and uploads the final JAR artifacts.
-- **Native builders**: reusable Linux, macOS, and Windows workflows used by Build and Release. Generated JNI files are never committed back to the repository.
+- **Build**: restores the JNI bundle by source hash when possible; on a cache miss it builds the required Linux, macOS, Windows, and Android native targets first, then builds Minecraft 26.1.2 and 26.2 and uploads the final JAR artifacts.
+- **Native builders**: reusable Linux, macOS, Windows, and Android workflows used by Build and Release. Generated JNI files are never committed back to the repository.
 - **Release**: runs only for tag pushes, always rebuilds all JNI targets from source, builds both Minecraft versions using the tag as the mod version, and publishes both JARs to the matching GitHub Release.
 
 ## Original project

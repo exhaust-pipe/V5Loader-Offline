@@ -9,7 +9,16 @@ permissions:
 
 jobs:
   linux-builder:
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+            java_arch: x64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            java_arch: aarch64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout
@@ -23,6 +32,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
+          architecture: ${{ matrix.java_arch }}
 
       - name: Build native library
         run: |
@@ -31,11 +41,11 @@ jobs:
 
       - name: Stage native cache
         run: |
-          mkdir -p artifact/linux/x86_64
-          cp NativeSrc/build/V5PathJNI.so artifact/linux/x86_64/V5PathJNI.so
+          mkdir -p artifact/linux/${{ matrix.arch }}
+          cp NativeSrc/build/V5PathJNI.so artifact/linux/${{ matrix.arch }}/V5PathJNI.so
 
       - name: Cache Linux native for caller
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
-          path: artifact/linux/x86_64
-          key: v5-native-run-${{ github.run_id }}-linux-x86_64
+          path: artifact/linux/${{ matrix.arch }}
+          key: v5-native-run-${{ github.run_id }}-linux-${{ matrix.arch }}
