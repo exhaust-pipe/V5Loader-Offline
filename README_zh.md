@@ -96,6 +96,8 @@ src/main/resources/assets/v5/natives/
 
 Windows 使用静态 MSVC runtime，使 JNI DLL 不依赖目标机器额外安装 Visual C++ Redistributable。Android 使用静态 libc++，最低 API 24，并支持 16 KB 内存页。Android 启动器仍须提供 Java 25、匹配的 LWJGL 核心库和兼容 OpenGL 3 的 Minecraft 渲染环境；本项目不提供独立 Android 应用。
 
+Windows ARM64 的 JNI builder 使用 Temurin 21 的头文件和导入库，因为该平台暂无 Temurin 25。Minecraft Mod 的编译和运行仍需要 Java 25。
+
 本地构建 JNI 时可使用与 Actions builder 相同的 CMake 参数。Linux：
 
 ```bash

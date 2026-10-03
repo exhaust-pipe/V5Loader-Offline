@@ -96,6 +96,8 @@ src/main/resources/assets/v5/natives/
 
 Windows uses the static MSVC runtime so the JNI DLL does not require a separately installed Visual C++ Redistributable. Android uses static libc++, targets API 24 or newer, and supports 16 KB memory pages. An Android launcher must still provide Java 25, compatible LWJGL core libraries, and an OpenGL 3 compatible Minecraft rendering environment; this project is not a standalone Android application.
 
+The Windows ARM64 JNI builder uses Temurin 21 headers and import libraries because Temurin 25 is unavailable for that platform. Compiling and running the Minecraft mod still requires Java 25.
+
 For local JNI builds, use the same CMake configuration as the Actions builders. On Linux:
 
 ```bash

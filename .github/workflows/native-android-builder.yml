@@ -48,7 +48,7 @@ jobs:
           PY
 
       - name: Install Android NDK
-        run: sdkmanager "ndk;27.2.12479018"
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.2.12479018"'
 
       - name: Build native libraries
         run: |

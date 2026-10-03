@@ -15,10 +15,13 @@ jobs:
           - arch: x86_64
             runner: windows-2025
             java_arch: x64
+            java_version: 25
             cmake_arch: x64
           - arch: arm64
             runner: windows-11-arm
             java_arch: aarch64
+            # Temurin 25 is unavailable on Windows ARM64; JNI only needs the stable JDK headers and import libraries.
+            java_version: 21
             cmake_arch: ARM64
     runs-on: ${{ matrix.runner }}
 
@@ -29,11 +32,11 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Setup Java 25
+      - name: Setup Java for JNI
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
-          java-version: 25
+          java-version: ${{ matrix.java_version }}
           architecture: ${{ matrix.java_arch }}
 
       - name: Configure and build
