@@ -1,3 +1,26 @@
+# Upstream sync — 2026-10-21
+
+Reviewed upstream [`5.2.2-r2` through `5.2.2-r8`](https://github.com/V5-Client/V5Loader/compare/5.2.2-r1...5.2.2-r8), inclusive, against `dev` at `c4f5869dd9f4b27ec38e0f946b644d28e3a1a626`. The reviewed upstream tip is `4e9dccc868d7bc251a699e3ec65a504de40b5e52`, also the current `upstream/26.1.2` tip. This range requires no runtime or API changes in the offline loader.
+
+| Upstream release | Decision |
+| --- | --- |
+| `5.2.2-r2` (`46f94e7`) | HTTP helper deduplication affects `V5Http`, which is absent from the offline loader. |
+| `5.2.2-r3` (`7a00ef6`) | The proxy-provider link targets the upstream proxy manager, which is absent from this fork. |
+| `5.2.2-r4` (`285a9b6`) | Keep local build/release workflows; do not add CommitBot or Discord notification credentials. |
+| `5.2.2-r5` (`232dae8`) | Deferred automatic loader updates affect the removed `V5Loader`/`ModLoaderUpdater` path. Updates remain manual. |
+| `5.2.2-r6` (`b663685`, `6f3f09c`) | Cloudflare publishing and Discord notification workflows are already absent. Keep building JNI from source rather than importing upstream binaries. |
+| `5.2.2-r7`, `r8` (`1786273`, `4e9dccc`) | The Better Block Entities incompatibility declaration was added and then reverted upstream. Retain the final upstream behavior without adding that restriction. |
+
+Minecraft 26.1.2/26.2, NanoVG, offline startup, local script loading, native builds, and generated typings remain unchanged. The companion scripts update through `5.2.2-r12` uses APIs already available in this `dev` loader.
+
+## Validation
+
+- `./gradlew build --no-daemon --console=plain --max-workers=4` succeeded with JDK 25 for both Minecraft 26.1.2 and 26.2, producing the corresponding `V5-Offline-DEV-2.1.0-offline-<minecraft>.jar` files under `versions/<minecraft>/build/libs/`.
+- `git diff --check` passed. No loader API or native source changes were needed, so generated typings and native sources were not changed.
+- The build reports existing dependency-version, documentation metadata, Kotlin deprecation/context-receiver, and Gradle deprecation warnings. Game startup and the companion scripts' gameplay behavior were not exercised.
+
+---
+
 # Upstream sync — 2026-10-02
 
 Ported selected changes from upstream [`5.2.1-r4` through `5.2.2-r1`](https://github.com/V5-Client/V5Loader/compare/5.2.1-r3...5.2.2-r1), inclusive, onto `dev` at `f4ac6aac1c890abe9a56f0334323f8054c64c5aa`. The reviewed upstream tip is `6b0c298b762e652e0c67cfa4d801fc84d3977f47`.
