@@ -21,6 +21,7 @@ on:
       - ".github/workflows/native-macos-builder.yml"
       - ".github/workflows/native-windows-builder.yml"
       - ".github/workflows/native-android-builder.yml"
+      - "!**/*.md"
   pull_request:
     paths:
       - "src/main/java/**"
@@ -39,6 +40,7 @@ on:
       - ".github/workflows/native-macos-builder.yml"
       - ".github/workflows/native-windows-builder.yml"
       - ".github/workflows/native-android-builder.yml"
+      - "!**/*.md"
 
 permissions:
   contents: read
