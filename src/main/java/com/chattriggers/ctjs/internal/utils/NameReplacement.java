@@ -11,14 +11,14 @@ import net.minecraft.util.FormattedCharSequence;
 
 import java.awt.Color;
 import java.util.IdentityHashMap;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public final class NameReplacement {
     private static String username;
-    private static Pattern usernamePattern;
+    private static String[] usernameVariants = new String[0];
     private static String input;
     private static Component replacement;
     private static boolean gradientEnabled = true;
@@ -44,7 +44,8 @@ public final class NameReplacement {
     public static void configure(String name, String customName, boolean gradient, boolean bold) {
         if (Objects.equals(username, name) && Objects.equals(input, customName) && gradientEnabled == gradient && boldEnabled == bold) return;
         username = name;
-        usernamePattern = name == null ? null : Pattern.compile(name, Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+        usernameVariants = name == null ? new String[0] : Stream.of(name, name.toUpperCase(Locale.ROOT), name.toLowerCase(Locale.ROOT))
+                .distinct().toArray(String[]::new);
         input = customName;
         gradientEnabled = gradient;
         boldEnabled = bold;
@@ -100,20 +101,38 @@ public final class NameReplacement {
         return style.getColor() != null && replacementColors.getIfPresent(style.getColor()) != null;
     }
 
+    private static int indexOfUsername(String text, int fromIndex) {
+        int next = -1;
+        for (String variant : usernameVariants) {
+            int index = text.indexOf(variant, fromIndex);
+            if (index >= 0 && (next < 0 || index < next)) next = index;
+            if (next == fromIndex) break;
+        }
+        return next;
+    }
+
+    private static boolean containsUsername(StringBuilder text) {
+        for (String variant : usernameVariants) {
+            if (text.indexOf(variant) >= 0) return true;
+        }
+        return false;
+    }
+
     public static Component process(Component original) {
         if (!isActive()) return original;
         String plain = original.getString();
-        if (!usernamePattern.matcher(plain).find()) return original;
+        if (indexOfUsername(plain, 0) < 0) return original;
         StringBuilder searchable = new StringBuilder();
         original.visit((style, text) -> {
             searchable.append(isReplacement(style) ? "\0".repeat(text.length()) : text);
             return Optional.empty();
         }, Style.EMPTY);
-        Matcher matches = usernamePattern.matcher(searchable);
-        if (!matches.find()) return original;
+        String source = searchable.toString();
+        int firstMatch = indexOfUsername(source, 0);
+        if (firstMatch < 0) return original;
         MutableComponent result = Component.empty();
         int[] position = {0};
-        int[] next = {matches.start()};
+        int[] next = {firstMatch};
         int[] skipUntil = {0};
         original.visit((style, text) -> {
             int start = position[0];
@@ -126,7 +145,7 @@ public final class NameReplacement {
                 result.append(replacement.copy().withStyle(style));
                 skipUntil[0] = next[0] + username.length();
                 cursor = skipUntil[0];
-                next[0] = matches.find() ? matches.start() : -1;
+                next[0] = indexOfUsername(source, cursor);
             }
             if (cursor < end) result.append(Component.literal(text.substring(cursor - start)).setStyle(style));
             position[0] = end;
@@ -145,7 +164,7 @@ public final class NameReplacement {
             return true;
         });
         FormattedCharSequence result = original;
-        if (usernamePattern.matcher(plain).find()) {
+        if (containsUsername(plain)) {
             MutableComponent component = Component.empty();
             original.accept((index, style, codePoint) -> {
                 component.append(Component.literal(new String(Character.toChars(codePoint))).setStyle(style));
