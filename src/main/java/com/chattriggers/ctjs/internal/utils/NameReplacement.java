@@ -13,9 +13,12 @@ import java.awt.Color;
 import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class NameReplacement {
     private static String username;
+    private static Pattern usernamePattern;
     private static String input;
     private static Component replacement;
     private static boolean gradientEnabled = true;
@@ -41,6 +44,7 @@ public final class NameReplacement {
     public static void configure(String name, String customName, boolean gradient, boolean bold) {
         if (Objects.equals(username, name) && Objects.equals(input, customName) && gradientEnabled == gradient && boldEnabled == bold) return;
         username = name;
+        usernamePattern = name == null ? null : Pattern.compile(name, Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
         input = customName;
         gradientEnabled = gradient;
         boldEnabled = bold;
@@ -99,17 +103,17 @@ public final class NameReplacement {
     public static Component process(Component original) {
         if (!isActive()) return original;
         String plain = original.getString();
-        if (!plain.contains(username)) return original;
+        if (!usernamePattern.matcher(plain).find()) return original;
         StringBuilder searchable = new StringBuilder();
         original.visit((style, text) -> {
             searchable.append(isReplacement(style) ? "\0".repeat(text.length()) : text);
             return Optional.empty();
         }, Style.EMPTY);
-        String source = searchable.toString();
-        if (!source.contains(username)) return original;
+        Matcher matches = usernamePattern.matcher(searchable);
+        if (!matches.find()) return original;
         MutableComponent result = Component.empty();
         int[] position = {0};
-        int[] next = {source.indexOf(username)};
+        int[] next = {matches.start()};
         int[] skipUntil = {0};
         original.visit((style, text) -> {
             int start = position[0];
@@ -122,7 +126,7 @@ public final class NameReplacement {
                 result.append(replacement.copy().withStyle(style));
                 skipUntil[0] = next[0] + username.length();
                 cursor = skipUntil[0];
-                next[0] = source.indexOf(username, cursor);
+                next[0] = matches.find() ? matches.start() : -1;
             }
             if (cursor < end) result.append(Component.literal(text.substring(cursor - start)).setStyle(style));
             position[0] = end;
@@ -141,7 +145,7 @@ public final class NameReplacement {
             return true;
         });
         FormattedCharSequence result = original;
-        if (plain.indexOf(username) >= 0) {
+        if (usernamePattern.matcher(plain).find()) {
             MutableComponent component = Component.empty();
             original.accept((index, style, codePoint) -> {
                 component.append(Component.literal(new String(Character.toChars(codePoint))).setStyle(style));
