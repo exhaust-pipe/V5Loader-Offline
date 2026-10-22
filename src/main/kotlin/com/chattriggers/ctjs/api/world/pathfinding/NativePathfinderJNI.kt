@@ -4,6 +4,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.util.Locale
+import com.chattriggers.ctjs.internal.utils.Platform
 
 internal object NativePathfinderJNI {
 
@@ -85,11 +86,9 @@ internal object NativePathfinderJNI {
     val lib = "$LIB_BASE$ext"
 
     val platformPaths = when {
+      Platform.isAndroid -> listOf("android/$arch")
       os.contains("win") -> listOf("windows/$arch")
-      os.contains("linux") -> when (arch) {
-        "x86_64" -> listOf("linux/x86_64")
-        else -> listOf("linux/$arch", "linux/x86_64")
-      }
+      os.contains("linux") -> listOf("linux/$arch")
       os.contains("mac") -> when (arch) {
         "arm64" -> listOf("macos/arm64", "macos/universal")
         "x86_64" -> listOf("macos/x86_64", "macos/universal")
@@ -102,6 +101,7 @@ internal object NativePathfinderJNI {
   }
 
   private fun extensionForOs(os: String): String = when {
+    Platform.isAndroid -> ".so"
     os.contains("win") -> ".dll"
     os.contains("mac") -> ".dylib"
     os.contains("linux") -> ".so"

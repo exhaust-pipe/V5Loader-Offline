@@ -47,7 +47,7 @@ dependencies {
     ksp(project(":typing-generator"))
 
     implementation(libs.lwjgl.nanovg) { include(this) }
-    listOf("windows", "linux", "macos", "macos-arm64").forEach {
+    listOf("windows", "windows-arm64", "linux", "linux-arm64", "macos", "macos-arm64").forEach {
         implementation(variantOf(libs.lwjgl.nanovg) { classifier("natives-$it") }) {
             include(this)
         }

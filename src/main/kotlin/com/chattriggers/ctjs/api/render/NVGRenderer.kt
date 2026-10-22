@@ -1,6 +1,7 @@
 package com.chattriggers.ctjs.api.render
 
 import com.chattriggers.ctjs.api.client.MinecraftCompat
+import com.chattriggers.ctjs.internal.utils.Platform
 import net.minecraft.client.Minecraft
 import org.lwjgl.nanovg.NVGColor
 import org.lwjgl.nanovg.NVGPaint
@@ -15,12 +16,14 @@ import org.lwjgl.opengl.GL33C
 import org.lwjgl.stb.STBImage.stbi_image_free
 import org.lwjgl.stb.STBImage.stbi_load_from_memory
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.Configuration
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.nio.ByteBuffer
+import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
 import javax.imageio.ImageIO
 import javax.imageio.metadata.IIOMetadataNode
@@ -33,6 +36,28 @@ import javax.imageio.metadata.IIOMetadataNode
  * keeps this backend OpenGL-only; Vulkan support is deliberately not provided.
  */
 object NVGRenderer {
+    init {
+        if (Platform.isAndroid) {
+            val arch = when (System.getProperty("os.arch").lowercase()) {
+                "aarch64", "arm64" -> "arm64"
+                "amd64", "x86_64" -> "x86_64"
+                else -> error("Unsupported Android NanoVG architecture: ${System.getProperty("os.arch")}")
+            }
+            val resource = "/assets/v5/natives/android/$arch/liblwjgl_nanovg.so"
+            val directory = Files.createTempDirectory("v5-nanovg-").also { it.toFile().deleteOnExit() }
+            val library = directory.resolve("liblwjgl_nanovg.so")
+            NVGRenderer::class.java.getResourceAsStream(resource).use { input ->
+                requireNotNull(input) { "Missing bundled Android NanoVG library: $resource" }
+                Files.copy(input, library)
+            }
+            library.toFile().deleteOnExit()
+            // Android needs Bionic natives; retain the launcher's paths for its other LWJGL libraries.
+            Configuration.LIBRARY_PATH.set(
+                listOfNotNull(directory.toString(), Configuration.LIBRARY_PATH.get()).joinToString(File.pathSeparator),
+            )
+        }
+    }
+
     private val mc = Minecraft.getInstance()
     private val nvgColor = NVGColor.malloc()
     private val nvgColor2 = NVGColor.malloc()
@@ -108,7 +133,10 @@ object NVGRenderer {
     private fun ensureInitialized() {
         if (vg != -1L) return
         vg = nvgCreate(NVG_ANTIALIAS or NVG_STENCIL_STROKES)
-        if (vg == -1L) throw RuntimeException("Failed to initialize NanoVG")
+        if (vg == 0L) {
+            vg = -1L
+            error("Failed to initialize NanoVG; an OpenGL 3 compatible context is required")
+        }
     }
 
     @JvmStatic
