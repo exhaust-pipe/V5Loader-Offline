@@ -290,6 +290,21 @@ object FileLib {
      */
     @JvmStatic
     fun open(path: File) {
+        //? if >=26.3 {
+        /*val desktop = if (java.awt.Desktop.isDesktopSupported()) java.awt.Desktop.getDesktop() else null
+        if (desktop?.isSupported(java.awt.Desktop.Action.OPEN) == true) {
+            desktop.open(path)
+        } else {
+            val os = System.getProperty("os.name", "").lowercase()
+            val command = when {
+                os.contains("win") -> listOf("rundll32", "url.dll,FileProtocolHandler", path.absolutePath)
+                os.contains("mac") -> listOf("open", path.absolutePath)
+                else -> listOf("xdg-open", path.absolutePath)
+            }
+            ProcessBuilder(command).start()
+        }
+        *///?} else {
         Util.getPlatform().openFile(path)
+        //?}
     }
 }

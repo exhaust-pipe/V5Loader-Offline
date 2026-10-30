@@ -19,11 +19,13 @@
 
 | 组件 | 版本 |
 | --- | --- |
-| Minecraft | 26.1.2、26.2 |
-| Fabric Loader | >= 0.19.3 |
+| Minecraft | 26.1.2、26.2、26.3 |
+| Fabric Loader | >= 0.19.5 |
 | Fabric Language Kotlin | >= 1.13.9+kotlin.2.3.10 |
 
 Fabric API 版本由 Stonecutter 根据 Minecraft 版本自动选择。
+
+离线版的 NanoVG 渲染器需要 OpenGL。Minecraft 26.3 请使用 OpenGL 渲染后端。
 
 ## 安装
 
@@ -65,13 +67,15 @@ Fabric API 版本由 Stonecutter 根据 Minecraft 版本自动选择。
 ```bash
 ./gradlew :26.1.2:build -PreleaseBuild
 ./gradlew :26.2:build -PreleaseBuild
+./gradlew :26.3:build -PreleaseBuild
 ```
 
 输出位于 `versions/<minecraft>/build/libs/`，文件名类似：
 
 ```text
-V5-Offline-5.2.0-offline-26.1.2.jar
-V5-Offline-5.2.0-offline-26.2.jar
+V5-Offline-2.2.0-offline-26.1.2.jar
+V5-Offline-2.2.0-offline-26.2.jar
+V5-Offline-2.2.0-offline-26.3.jar
 ```
 
 构建阶段会从 Maven／Gradle 仓库解析依赖，并取得 Windows、Linux、macOS 的 x86_64／ARM64 NanoVG 运行库。Android NanoVG 从同版本 LWJGL 源码编译。原生库均随 Mod 打包，游戏运行时无需下载。
@@ -127,9 +131,9 @@ cmake --build NativeSrc/build-android --config Release --parallel
 
 ### GitHub Actions
 
-- **Build**：优先按源码哈希恢复 JNI bundle；缓存未命中时才构建 Linux、macOS、Windows、Android 原生库，然后统一构建 Minecraft 26.1.2 和 26.2 并上传最终 JAR artifacts。
+- **Build**：优先按源码哈希恢复 JNI bundle；缓存未命中时才构建 Linux、macOS、Windows、Android 原生库，然后统一构建 Minecraft 26.1.2、26.2 和 26.3 并上传最终 JAR artifacts。
 - **Native builders**：Linux、macOS、Windows、Android 的 reusable workflow，由 Build 和 Release 调用；生成的 JNI 文件不会提交回仓库。
-- **Release**：仅在 push tag 时运行，始终从源码重编全部 JNI，再使用 tag 作为 Mod 版本构建两个 Minecraft 版本，并发布到对应 GitHub Release。
+- **Release**：仅在 push tag 时运行，始终从源码重编全部 JNI，再使用 tag 作为 Mod 版本构建三个 Minecraft 版本，并发布到对应 GitHub Release。
 
 ## 原项目
 

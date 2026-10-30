@@ -38,6 +38,7 @@ object NanoVGPIP {
         )
     }
 
+    //? if <26.3 {
     internal fun render(state: State) {
         val colorTarget = RenderSystem.outputColorTextureOverride ?: return
         val framebuffer = resolveFramebuffer(colorTarget) ?: return
@@ -119,6 +120,7 @@ object NanoVGPIP {
         }
         return null
     }
+    //?}
 
     class State(
         val width: Int,

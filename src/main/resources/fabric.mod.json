@@ -30,5 +30,5 @@
     "stfu": "*",
     "nvidium": "*"
   },
-  "accessWidener": "ctjs.accesswidener"
+  "accessWidener": "${access_widener}"
 }

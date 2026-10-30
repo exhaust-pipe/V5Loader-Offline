@@ -19,11 +19,13 @@ This loader is intended to be used with [V5-Offline](https://github.com/exhaust-
 
 | Component | Version |
 | --- | --- |
-| Minecraft | 26.1.2 and 26.2 |
-| Fabric Loader | >= 0.19.3 |
+| Minecraft | 26.1.2, 26.2, and 26.3 |
+| Fabric Loader | >= 0.19.5 |
 | Fabric Language Kotlin | >= 1.13.9+kotlin.2.3.10 |
 
 Fabric API is selected per Minecraft version through Stonecutter.
+
+The offline NanoVG renderer requires OpenGL. Select the OpenGL rendering backend in Minecraft 26.3.
 
 ## Installation
 
@@ -65,13 +67,15 @@ Build one Minecraft version explicitly:
 ```bash
 ./gradlew :26.1.2:build -PreleaseBuild
 ./gradlew :26.2:build -PreleaseBuild
+./gradlew :26.3:build -PreleaseBuild
 ```
 
 Outputs are written below `versions/<minecraft>/build/libs/` and are named like:
 
 ```text
-V5-Offline-5.2.0-offline-26.1.2.jar
-V5-Offline-5.2.0-offline-26.2.jar
+V5-Offline-2.2.0-offline-26.1.2.jar
+V5-Offline-2.2.0-offline-26.2.jar
+V5-Offline-2.2.0-offline-26.3.jar
 ```
 
 The build resolves dependencies from Maven/Gradle repositories, including NanoVG runtimes for Windows, Linux, and macOS on x86_64 and ARM64. Android NanoVG is compiled from the matching LWJGL sources. Native libraries are bundled in the mod; none are downloaded at game startup.
@@ -127,9 +131,9 @@ Copy the generated `V5PathJNI` library into its matching path above before runni
 
 ### GitHub Actions
 
-- **Build**: restores the JNI bundle by source hash when possible; on a cache miss it builds the required Linux, macOS, Windows, and Android native targets first, then builds Minecraft 26.1.2 and 26.2 and uploads the final JAR artifacts.
+- **Build**: restores the JNI bundle by source hash when possible; on a cache miss it builds the required Linux, macOS, Windows, and Android native targets first, then builds Minecraft 26.1.2, 26.2, and 26.3 and uploads the final JAR artifacts.
 - **Native builders**: reusable Linux, macOS, Windows, and Android workflows used by Build and Release. Generated JNI files are never committed back to the repository.
-- **Release**: runs only for tag pushes, always rebuilds all JNI targets from source, builds both Minecraft versions using the tag as the mod version, and publishes both JARs to the matching GitHub Release.
+- **Release**: runs only for tag pushes, always rebuilds all JNI targets from source, builds all three Minecraft versions using the tag as the mod version, and publishes all three JARs to the matching GitHub Release.
 
 ## Original project
 

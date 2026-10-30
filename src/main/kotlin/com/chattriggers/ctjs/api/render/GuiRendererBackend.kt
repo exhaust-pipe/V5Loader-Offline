@@ -13,7 +13,6 @@ open class GuiRendererBackend {
     private val callbacks = CopyOnWriteArrayList<Runnable>()
     private val preCallbacks = CopyOnWriteArrayList<Runnable>()
     private val deferredRenderWork = ConcurrentLinkedQueue<Runnable>()
-    private var backendDrawing = false
 
     @JvmField
     val defaultFont = NVGRenderer.defaultFont ?: Font("Default", "/assets/v5/font.otf")
@@ -46,7 +45,6 @@ open class GuiRendererBackend {
 
         if (list.isEmpty()) return
         val window = Minecraft.getInstance().window
-        backendDrawing = true
         NVGRenderer.beginFrame(window.guiScaledWidth.toFloat(), window.guiScaledHeight.toFloat())
         try {
             list.forEach { callback ->
@@ -54,26 +52,28 @@ open class GuiRendererBackend {
             }
         } finally {
             NVGRenderer.endFrame()
-            backendDrawing = false
         }
     }
 
     // Keep these names so Render2D does not need a broad API rewrite in this experiment.
     internal fun translateSkija(x: Float, y: Float): Boolean {
-        if (!backendDrawing) return false
+        if (!NVGRenderer.isDrawing()) return false
         NVGRenderer.translate(x, y)
+        DrawContextHolder.currentContext?.pose()?.translate(x, y)
         return true
     }
 
     internal fun scaleSkija(x: Float, y: Float): Boolean {
-        if (!backendDrawing) return false
+        if (!NVGRenderer.isDrawing()) return false
         NVGRenderer.scale(x, y)
+        DrawContextHolder.currentContext?.pose()?.scale(x, y)
         return true
     }
 
     internal fun rotateSkija(degrees: Float): Boolean {
-        if (!backendDrawing) return false
+        if (!NVGRenderer.isDrawing()) return false
         NVGRenderer.rotate(degrees)
+        DrawContextHolder.currentContext?.pose()?.rotate(Math.toRadians(degrees.toDouble()).toFloat())
         return true
     }
 
@@ -132,7 +132,7 @@ open class GuiRendererBackend {
     fun textWidth(text: String, size: Float, font: Font? = defaultFont): Float {
         // Module construction happens on the CTJS loader thread. Neither NanoVG nor Minecraft's
         // Font.width() is safe there: Minecraft may lazily bake/upload glyphs and touch RenderSystem.
-        if (backendDrawing && NVGRenderer.isDrawing()) return NVGRenderer.textWidth(text, size, font)
+        if (NVGRenderer.isDrawing()) return NVGRenderer.textWidth(text, size, font)
         return estimateTextWidth(text, size)
     }
 
