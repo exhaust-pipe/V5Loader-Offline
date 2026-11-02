@@ -25,6 +25,7 @@ repositories {
 val minecraftVersion = sc.current.version
 val fabricApiVersion: String = sc.properties["deps.fabric_api"]
 val universalcraftMinecraftVersion = if (minecraftVersion == "26.1.2") "26.1" else minecraftVersion
+val accessWidener = if (minecraftVersion == "26.3") "ctjs-26.3.accesswidener" else "ctjs.accesswidener"
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraftVersion")
@@ -59,7 +60,7 @@ dependencies {
 }
 
 loom {
-    accessWidenerPath.set(rootProject.file("src/main/resources/ctjs.accesswidener"))
+    accessWidenerPath.set(rootProject.file("src/main/resources/$accessWidener"))
 }
 
 base {
@@ -79,10 +80,13 @@ tasks {
         val flkVersion = libs.versions.fabric.kotlin.get()
         val fapiVersion = fabricApiVersion
         val loaderVersion = libs.versions.loader.get()
-        val versionMixins = if (minecraftVersion == "26.1.2") {
-            listOf("GuiHudMixin", "GuiScreenMixin", "LevelRendererMixin")
-        } else {
-            listOf("GuiHudMixin", "GameRendererAccessor", "GuiScreenMixin", "LevelRendererMixin")
+        val versionMixins = when (minecraftVersion) {
+            "26.1.2" -> listOf("GuiHudMixin", "GuiScreenMixin", "LevelRendererMixin")
+            "26.3" -> listOf(
+                "GuiHudMixin", "GameRendererAccessor", "GuiScreenMixin", "LevelRendererMixin",
+                "PictureInPictureRendererAccessor", "LevelExtractorMixin",
+            )
+            else -> listOf("GuiHudMixin", "GameRendererAccessor", "GuiScreenMixin", "LevelRendererMixin")
         }
 
         from(rootProject.file("typing-generator/src/main/resources")) { include("provided-types.properties") }
@@ -92,6 +96,7 @@ tasks {
         inputs.property("fabric_kotlin_version", flkVersion)
         inputs.property("fabric_api_version", fapiVersion)
         inputs.property("loader_version", loaderVersion)
+        inputs.property("access_widener", accessWidener)
         inputs.property("version_mixins", versionMixins.joinToString(","))
 
         filesMatching("fabric.mod.json") {
@@ -100,7 +105,8 @@ tasks {
                 "minecraft_version" to mcVersion,
                 "fabric_kotlin_version" to flkVersion,
                 "fabric_api_version" to fapiVersion,
-                "loader_version" to loaderVersion
+                "loader_version" to loaderVersion,
+                "access_widener" to accessWidener,
             )
         }
 

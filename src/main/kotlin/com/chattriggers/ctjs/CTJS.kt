@@ -26,6 +26,7 @@ import kotlin.concurrent.thread
 
 class CTJS : ClientModInitializer {
     override fun onInitializeClient() {
+        System.setProperty("v5.minecraft_version", FabricLoader.getInstance().getModContainer("minecraft").orElseThrow().metadata.version.friendlyString)
         Client.referenceSystemTime = System.nanoTime()
         Initializer.initializers.forEach(Initializer::init)
         Config.loadData()

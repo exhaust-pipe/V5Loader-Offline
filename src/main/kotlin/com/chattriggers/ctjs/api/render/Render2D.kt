@@ -169,6 +169,7 @@ object Render2D : GuiRendererBackend() {
         matrixStack = stack
         stack.push()
         DrawContextHolder.currentContext?.pose()?.pushMatrix()
+        NVGRenderer.save()
     }
 
     @JvmStatic
@@ -177,6 +178,7 @@ object Render2D : GuiRendererBackend() {
         matrixStackStack.removeLast()
         matrixStack.pop()
         DrawContextHolder.currentContext?.pose()?.popMatrix()
+        NVGRenderer.restore()
     }
 
     @JvmStatic

@@ -1,3 +1,23 @@
+# Minecraft 26.3 support — 2026-10-29
+
+Adapted `dev` at `d6888e05bc2595f04db85ab165b969ce9b98b8b8` using upstream [26.3 support (`fd00042`)](https://github.com/V5-Client/V5Loader/commit/fd00042e30e086f0cd943244b749b434bef3c141) and the subsequent render-camera synchronization fix (`24b4eb2`). Minecraft 26.1.2 and 26.2 remain supported; the Stonecutter editing version stays at 26.2.
+
+- Add 26.3 to Stonecutter, Build, and Release, with Fabric API `0.160.7+26.3`, Fabric Loader `0.19.5`, UniversalCraft `534`, and a separate RenderPearl access widener. Dependency-property changes now trigger CI and invalidate its Gradle cache.
+- Port the changed input, command, block, hand-rendering, world-rendering, and tooltip APIs. Keep GLFW-style script key codes while translating SDL keyboard and mouse input; correct SDL right/middle mouse ordering and expose physical key/button state.
+- Adapt the offline NanoVG GUI and picture-in-picture renderers to 26.3 textures with an owned framebuffer and stencil attachment. Preserve vanilla GUI extraction for text/items and restore OpenGL state and resources after rendering. OpenGL remains required.
+- Provide the running Minecraft version to the companion scripts, and regenerate their public API declarations from the Loader.
+- Retain offline startup, local scripts, disabled external URLs, existing native platform builds, and the prior game-state/pathfinding fixes. No upstream authentication, telemetry, updates, Skija downloads, or release publishing services are added.
+
+## Validation
+
+- `./gradlew generateTypings` and `./gradlew build --continue --no-daemon --console=plain --max-workers=1 --no-parallel -Dorg.gradle.jvmargs=-Xmx3G -Pkotlin.daemon.jvmargs=-Xmx1536m` succeeded with JDK 25 for Minecraft 26.1.2, 26.2, and 26.3. The final build includes the regenerated declarations and locally compiled Linux x86_64 Pathfinder JNI.
+- Inspected all three mod JARs: each declares its exact Minecraft version and Fabric Loader requirement, selects the correct access widener, contains every configured Mixin class and Linux JNI, and has no unresolved metadata placeholders.
+- Copied the generated 26.2 declarations to both repositories without manual edits. Both copies match the generator output byte for byte. The generator's existing trailing-space style is retained; `git diff --check` passes when these generated declaration files are excluded.
+- actionlint 1.7.12 accepted the Loader workflows (`-shellcheck=`). The complete native platform matrix and GitHub release publishing were not executed locally.
+- Existing dependency-version, documentation metadata, Kotlin deprecation/context-receiver, and Gradle deprecation warnings remain. Game startup, GUI/input behavior, and gameplay still require in-game validation; 26.3 must use OpenGL with this NanoVG backend.
+
+---
+
 # Upstream sync — 2026-10-21
 
 Reviewed upstream [`5.2.2-r2` through `5.2.2-r8`](https://github.com/V5-Client/V5Loader/compare/5.2.2-r1...5.2.2-r8), inclusive, against `dev` at `c4f5869dd9f4b27ec38e0f946b644d28e3a1a626`. The reviewed upstream tip is `4e9dccc868d7bc251a699e3ec65a504de40b5e52`, also the current `upstream/26.1.2` tip. This range requires no runtime or API changes in the offline loader.

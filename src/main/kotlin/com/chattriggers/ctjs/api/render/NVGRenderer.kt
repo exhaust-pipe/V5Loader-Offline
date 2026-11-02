@@ -144,6 +144,11 @@ object NVGRenderer {
 
     @JvmStatic
     fun beginFrame(width: Float, height: Float) {
+        val target = MinecraftCompat.mainRenderTarget(mc)
+        beginFrame(width, height, target.width, target.height)
+    }
+
+    internal fun beginFrame(width: Float, height: Float, pixelWidth: Int, pixelHeight: Int) {
         if (mc.window.handle() == 0L || drawing) return
         ensureInitialized()
 
@@ -164,10 +169,9 @@ object NVGRenderer {
         savedBlendSrcAlpha = GL11C.glGetInteger(GL14_BLEND_SRC_ALPHA)
         savedBlendDstAlpha = GL11C.glGetInteger(GL14_BLEND_DST_ALPHA)
 
-        val target = MinecraftCompat.mainRenderTarget(mc)
-        GL11C.glViewport(0, 0, target.width, target.height)
+        GL11C.glViewport(0, 0, pixelWidth, pixelHeight)
         GL33C.glBindSampler(0, 0)
-        val pixelRatio = if (width > 0f) target.width.toFloat() / width else 1f
+        val pixelRatio = if (width > 0f) pixelWidth.toFloat() / width else 1f
 
         nvgBeginFrame(vg, width, height, pixelRatio)
         nvgTextAlign(vg, NVG_ALIGN_LEFT or NVG_ALIGN_TOP)

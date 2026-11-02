@@ -123,7 +123,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: [26.1.2, 26.2]
+        minecraft: [26.1.2, 26.2, 26.3]
 
     steps:
       - name: Checkout tag
@@ -141,7 +141,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: "${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/*.versions.toml') }}"
+          key: "${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/*.versions.toml', 'stonecutter.properties.toml') }}"
           restore-keys: |
             ${{ runner.os }}-gradle-
 
