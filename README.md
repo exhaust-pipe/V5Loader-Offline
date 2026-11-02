@@ -73,9 +73,9 @@ Build one Minecraft version explicitly:
 Outputs are written below `versions/<minecraft>/build/libs/` and are named like:
 
 ```text
-V5-Offline-2.2.0-offline-26.1.2.jar
-V5-Offline-2.2.0-offline-26.2.jar
-V5-Offline-2.2.0-offline-26.3.jar
+V5-Offline-2.3.0-offline-26.1.2.jar
+V5-Offline-2.3.0-offline-26.2.jar
+V5-Offline-2.3.0-offline-26.3.jar
 ```
 
 The build resolves dependencies from Maven/Gradle repositories, including NanoVG runtimes for Windows, Linux, and macOS on x86_64 and ARM64. Android NanoVG is compiled from the matching LWJGL sources. Native libraries are bundled in the mod; none are downloaded at game startup.

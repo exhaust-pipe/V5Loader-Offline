@@ -73,9 +73,9 @@ Fabric API 版本由 Stonecutter 根据 Minecraft 版本自动选择。
 输出位于 `versions/<minecraft>/build/libs/`，文件名类似：
 
 ```text
-V5-Offline-2.2.0-offline-26.1.2.jar
-V5-Offline-2.2.0-offline-26.2.jar
-V5-Offline-2.2.0-offline-26.3.jar
+V5-Offline-2.3.0-offline-26.1.2.jar
+V5-Offline-2.3.0-offline-26.2.jar
+V5-Offline-2.3.0-offline-26.3.jar
 ```
 
 构建阶段会从 Maven／Gradle 仓库解析依赖，并取得 Windows、Linux、macOS 的 x86_64／ARM64 NanoVG 运行库。Android NanoVG 从同版本 LWJGL 源码编译。原生库均随 Mod 打包，游戏运行时无需下载。
